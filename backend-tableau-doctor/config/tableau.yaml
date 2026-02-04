@@ -1,0 +1,13 @@
+tableau:
+  api:
+    version: '3.27'
+  image:
+    logopath: ./images/exavalu-logo.png
+  logging:
+    logfilepath: C:/logs/app.log
+  output:
+    directory: C:/metadata_output
+  server:
+    url: https://us-west-2b.online.tableau.com
+  site:
+    id: exavalu

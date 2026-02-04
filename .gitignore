@@ -1,0 +1,66 @@
+# =========================
+# Python and FastAPI
+# =========================
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# Environment variables
+.env
+.env.*
+*.env
+
+# Python build artifacts
+build/
+dist/
+*.egg-info/
+
+# FastAPI runtime files
+*.sqlite3
+*.db
+.pytest_cache/
+.coverage
+htmlcov/
+
+# =========================
+# React and Node
+# =========================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Production build
+build/
+dist/
+
+# =========================
+# Editor and OS files
+# =========================
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# =========================
+# Cache and temp
+# =========================
+.cache/
+.ipynb_checkpoints/
+
+
+# =========================
+# Tableau files
+# =========================
+*.tdsx
+*.twb
+*.twbx

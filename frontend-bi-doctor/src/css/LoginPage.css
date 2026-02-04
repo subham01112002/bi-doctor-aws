@@ -1,0 +1,337 @@
+/* =========================
+   THEME VARIABLES
+   ========================= */
+
+/* Light mode defaults */
+:root {
+  --bg-page: #f3f4f6;
+  --bg-card: #ffffff;
+
+  --border-card: #e5e7eb;
+  --border-input: #d1d5db;
+
+  --text-primary: #111827;
+  --text-secondary: #374151;
+  --text-placeholder: #9ca3af;
+
+  --input-bg: #ffffff;
+  --input-text: #111827;
+
+  --btn-bg: #4f46e5;
+  --btn-bg-hover: #4338ca;
+  --btn-text: #ffffff;
+
+  --focus-ring: rgba(79, 70, 229, 0.3);
+  --font-sans: "Inter", system-ui, -apple-system, BlinkMacSystemFont,
+               "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+/* Dark mode overrides */
+  @media (prefers-color-scheme: dark) {
+  :root {
+    --bg-page: #111827;
+    --bg-card: #1f2937;
+
+    --border-card: #374151;
+    --border-input: #4b5563;
+
+    --text-primary: #f9fafb;
+    --text-secondary: #e5e7eb;
+    --text-placeholder: #9ca3af;
+
+    --input-bg: #111827;
+    --input-text: #f9fafb;
+
+    --btn-bg: #6366f1;
+    --btn-bg-hover: #4f46e5;
+    --btn-text: #ffffff;
+
+    --focus-ring: rgba(99, 102, 241, 0.35);
+  }
+}
+
+
+/* =========================
+   PAGE LAYOUT
+   ========================= */
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  background-color: var(--bg-page);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.6;
+  letter-spacing: 0.01em;
+}  
+
+/* =========================
+   LOGIN CARD
+   ========================= */
+
+.login-box {
+  position: relative;
+  width: 100%;
+  max-width: 300px;
+  padding: 32px;
+  border-radius: 14px;
+  background-color: var(--login-bg-card);
+  isolation: isolate;
+
+  /* floating feel */
+  box-shadow:
+    0 10px 30px rgba(0, 0, 0, 0.08),
+    0 0 0 1px var(--border-card);
+}
+
+/* Gradient border */
+/* .login-box::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: 18px;
+  background: linear-gradient(
+    135deg,
+    rgba(99, 102, 241, 0.6),
+    rgba(236, 72, 153, 0.6),
+    rgba(245, 158, 11, 0.6)
+  );
+  z-index: -1;
+  filter: blur(6px);
+  opacity: 0.8;
+} */
+
+
+@keyframes gradientFlow {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* =========================
+   FORM LAYOUT
+   ========================= */
+
+/* .input-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+} */
+
+/* =========================
+   LABELS
+   ========================= */
+
+.input-label {
+  width: 120px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+/* =========================
+   INPUT FIELDS
+   ========================= */
+
+.input-field {
+  flex: 1;
+  padding: 10px 12px;
+  font-size: 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border-input);
+  background-color: var(--input-bg);
+  color: var(--input-text);
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  width: 100%;
+  box-sizing: border-box; /* ✅ VERY IMPORTANT */
+  /* font style */
+  font-family: var(--font-sans);
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
+
+  border: 1px solid var(--border-input);
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.15s ease;
+
+}
+
+.input-field:focus {
+  border-color: var(--btn-bg); /* 🔵 primary focus color */
+  box-shadow: 0 0 0 3px var(--focus-ring); /* soft glow */
+  transform: translateY(-1px);
+}
+.input-field:not(:placeholder-shown) {
+  border-color: var(--btn-bg);
+}
+/* .input-field::placeholder {
+  color: var(--text-placeholder);
+} */
+
+/* .input-field:focus {
+  border-color: var(--btn-bg);
+  box-shadow: 0 0 0 2px var(--focus-ring);
+} */
+
+/* Specific fields intentionally inherit theme colors from .input-field */
+
+/* =========================
+   BUTTON
+   ========================= */
+
+.login-btn {
+  width: 100%;
+  padding: 12px;
+  margin-top: 8px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  background-color: var(--btn-bg);
+  color: var(--btn-text);
+  /* transition: background-color 0.2s; */
+  /* font style */
+  font-family: var(--font-sans);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.login-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px rgba(79, 70, 229, 0.3);
+}
+.login-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
+}
+.login-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* =========================
+   FLOATING LABEL INPUT
+   ========================= */
+
+.field {
+  position: relative;
+  margin-bottom: 30px;
+  width: 100%;
+}
+
+.field label {
+  position: absolute;
+  top: 50%;
+  left: 14px;
+  transform: translateY(-50%);
+  background-color: var(--bg-card); /* ✅ solid */
+  padding: 0 6px;
+  color: var(--text-placeholder);
+  pointer-events: none;
+  transition: 0.2s ease;
+  /* font style */
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+
+  /* ✅ NO BACKGROUND */
+  background-color: transparent;
+
+  color: var(--text-placeholder);
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+
+
+/* When focused or has value */
+.input-field:focus + label,
+.input-field:not(:placeholder-shown) + label {
+  opacity: 0;  
+  /* font-size: 15px; */
+  /* color: var(--btn-bg); */
+}
+
+
+.input-field:focus {
+  transform: translateY(-1px);
+}
+
+.text-red-600 {
+  font-family: var(--font-sans);
+  font-size: 12.5px;
+  font-weight: 500;
+  color:red;
+  width: 100%;
+  text-align: center;
+}
+
+/* =========================
+   FOOTER
+   ========================= */
+.login-footer {
+  margin-top: 14px;
+  text-align: center;
+
+  font-family: var(--font-sans);
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+
+  color: var(--text-secondary);
+
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+/* =========================
+   PASSWORD EYE (FONT AWESOME)
+   ========================= */
+
+.password-field {
+  position: relative;
+}
+
+.eye-btn {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+
+  color: var(--text-secondary);
+  font-size: 16px;
+
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.eye-btn:hover {
+  color: var(--btn-bg);
+}
+
+/* prevent text overlap */
+/* .password-field .input-field {
+  padding-right: 42px;
+} */
+
+/* prevent text overlap */
+.field .input-field {
+  padding-right: 42px;
+}
+

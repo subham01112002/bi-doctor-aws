@@ -1,0 +1,405 @@
+
+/* Sidebar Base */
+.sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  background-color: var(--sidebar-bg);
+  border-right: 1px solid var(--border-card);
+  display: flex;
+  flex-direction: column;
+  transition: width 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow-x: hidden;   /* keep horizontal clean */
+  overflow-y: visible;  /* allow popover */
+  white-space: nowrap;
+  z-index: 1000;
+}
+ 
+.sidebar.expanded { width: 260px; }
+.sidebar.collapsed { width: 64px; }
+ 
+/* Header & Toggle Button */
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  height: 64px;
+  padding: 0;
+  /* width: 100%; */
+  overflow: hidden;
+}
+ 
+.sidebar-toggle {
+  width: 25px;
+  min-width: 30px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  font-size: 1.5rem;
+  cursor: pointer;
+  flex-shrink: 0;
+  outline: none;
+}
+
+.sidebar-toggle .icon-wrapper {
+  width: 48px;
+  min-width: 48px;
+  height: 48px;
+}
+
+.sidebar-toggle {
+  outline: none;
+}
+
+.sidebar-toggle:focus {
+  outline: none;
+  /* box-shadow: none; */
+}
+
+.sidebar-toggle .icon-wrapper {
+  border-radius: 12px;
+  transition: background-color 0.2s ease;
+}
+
+.sidebar-toggle:hover .icon-wrapper {
+  background-color: var(--clear-bg);
+}
+
+ 
+/* Nav Link Styling (The "Button" Look) */
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 8px; /* Horizontal padding for the 'pill' look */
+  margin-top: 10px;
+}
+ 
+.sidebar-nav a, .sidebar-footer {
+  display: flex;
+  align-items: center;
+  height: 48px;
+  text-decoration: none;
+  color: var(--text-primary);
+  border-radius: 12px;
+  transition: all 0.2s ease;
+}
+ 
+/* Backgrounds for Buttons */
+.sidebar-nav a:hover {
+  background-color: var(--clear-bg);
+}
+ 
+.sidebar-nav a.active {
+  background-color: var(--btn-bg);
+  color: var(--btn-text);
+}
+
+.sidebar.collapsed .nav-text {
+  width: 0;
+  opacity: 0;
+  overflow: hidden;
+}
+
+ 
+/* Icon Centering Logic */
+.icon-wrapper {
+  width: 48px;      /* width - padding = centered icon */
+  min-width: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+/* Icon Image Styling */
+.nav-icon {
+  width: 45px;
+  height: 45px;
+  max-width: 45px;
+  max-height: 45px;
+  object-fit: contain;
+  display: block;
+}
+
+ 
+/* Adjustments for Collapsed State */
+.sidebar.collapsed .sidebar-nav {
+  padding: 0 8px; /* Keeps the icon centered in the 64px bar */
+}
+ 
+/* Text Animation */
+.nav-text, .sidebar-title {
+  opacity: 0;
+  transform: translateX(-10px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  font-weight: 600;
+  margin-left: 4px;
+}
+ 
+.sidebar.expanded .nav-text,
+.sidebar.expanded .sidebar-title {
+  opacity: 1;
+  transform: translateX(0);
+  transition-delay: 0.1s;
+  /* color: var(--text-primary); */
+}
+ 
+/* Footer Fix */
+ 
+ 
+/* Content Shift */
+.main-content {
+  margin-left: 64px;
+ 
+  transition: margin-left 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.main-content.shifted { margin-left: 260px; }
+ 
+/* Footer container */
+.sidebar-footer {
+  display: flex;
+  align-items: center;
+  position: relative;
+  margin-top: auto;
+  margin-bottom: 16px;
+  padding: 0 8px;   /* SAME as nav links */
+  overflow: visible;
+}
+ 
+ 
+/* Footer click target */
+.footer-trigger {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: inherit;
+  outline: none;
+}
+
+.footer-trigger:focus {
+  outline: none;
+  box-shadow: none;
+}
+ 
+/* Popover card */
+ 
+/* ===== Account Popover ===== */
+ 
+.account-popover {
+  position: absolute;
+  bottom: 56px;
+  left: 50%;
+  transform: translateX(-50%);
+ 
+  width: 280px;
+ 
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  border-radius: 16px;
+ 
+  box-shadow:
+    0 16px 40px rgba(0, 0, 0, 0.18),
+    0 4px 12px rgba(0, 0, 0, 0.12);
+ 
+  padding: 8px 0;
+  z-index: 9999;
+  transition: left 0.2s ease, transform 0.2s ease;
+}
+ 
+/* User header */
+.account-user {
+  display: flex;
+  gap: 12px;
+  padding: 12px 16px;
+  /* align-items: center; */
+  align-items: flex-start;
+}
+ 
+.account-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  /* background: #e5e7eb; */
+  background: var(--clear-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+}
+
+
+.account-name {
+  font-weight: 600;
+  font-size: 14px;
+  max-width: 100%;
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+ 
+/* .account-username {
+  font-size: 12px;
+  color: #6b7280;
+} */
+ 
+/* Divider */
+.account-divider {
+  height: 1px;
+  background: var(--border-card);
+  margin: 6px 0;
+}
+ 
+/* Menu items */
+.account-item {
+  width: 100%;
+  padding: 10px 16px;
+  background: none;
+  border: none;
+  text-align: left;
+  font-size: 14px;
+  cursor: pointer;
+  color: var(--text-primary);
+  /* outline: none; */
+}
+/* .account-item:focus,
+.account-item:active,
+.account-item:focus-visible {
+  outline: none;
+  border: none;
+  box-shadow: none;
+}  */
+.account-item:hover {
+  background: var(--clear-bg);
+}
+ 
+.account-item.logout {
+  color: #dc2626;
+}
+ 
+.account-item.logout {
+  font-weight: 600;
+}
+ 
+/* ============================= */
+/* Popover positioning by state */
+/* ============================= */
+ 
+/* Sidebar EXPANDED → center above footer */
+.account-popover.expanded {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+}
+ 
+/* Sidebar COLLAPSED → open to the right */
+.account-popover.collapsed {
+  position: fixed;          /* 🔥 KEY FIX */
+  left: 72px;               /* 64px sidebar + gap */
+  bottom: 24px;             /* aligns near footer */
+  transform: none;
+}
+ 
+/* Header */
+.account-popover-header {
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #6b7280;
+  border-bottom: 1px solid #e5e7eb;
+}
+.footer-trigger {
+  padding: 0;
+  height: 48px;
+  border-radius: 12px;
+}
+ 
+.footer-trigger:hover {
+  background-color: var(--clear-bg);
+}
+ 
+/* Logout button */
+.logout-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+ 
+  width: 100%;
+  padding: 12px 16px;
+ 
+  background: none;
+  border: none;
+  cursor: pointer;
+ 
+  font-size: 14px;
+  font-weight: 600;
+ 
+  /* 🔑 IMPORTANT FIX */
+  color: var(--text-primary);
+}
+ 
+ 
+.logout-btn:hover {
+  background: #f3f4f6;
+}
+ 
+/* Logout icon */
+.logout-icon {
+  font-size: 16px;
+}
+ 
+/* Animation */
+@keyframes popFade {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.logout-icon {
+  font-size: 16px;
+  color: var(--text-primary);
+}
+
+/* Menu item styling */
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 1px 1px;
+  border-radius: 12px;
+  /* color: #d1d5db; */
+  color: var(--icon-color);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.menu-item svg {
+  stroke: currentColor;
+  flex-shrink: 0;
+  transition: color 0.2s ease;
+}
+
+.menu-item.active {
+  background: #5b5ce2; /* your purple */
+  /* color: #ffffff; */
+  color: var(--icon-active);
+}
+
+.menu-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
