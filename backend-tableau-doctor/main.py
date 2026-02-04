@@ -22,6 +22,8 @@ from datetime import datetime
 import psycopg2
 import mysql.connector
 import threading
+from util.s3_uploader import upload_excel_to_s3
+import os
 
 
 class LoginRequest(BaseModel):
@@ -30,9 +32,9 @@ class LoginRequest(BaseModel):
 
 app = FastAPI()
 
-# @app.get("/health")
-# def health():
-#     return {"status": "ok"}
+@app.get("/health")
+def health():
+    return {"status": "ok"}
 # Add this line after app initialization
 progress_store = {}
 #deployment_results = {} # Store final results of deployments (url)
@@ -519,10 +521,15 @@ def generate_combined_excel(req: GenerateExcelRequest, tableau_token: str | None
             workbook_counts, 
             datasource_counts
         )
+        s3_key = upload_excel_to_s3(
+            local_file_path=excel_generator.file_path,
+            bucket="tableau-doctor-output"
+        )
+        os.remove(excel_generator.file_path)
 
         return {
-            "message": "Combined Excel generated successfully",
-            "file_path": excel_generator.file_path
+            "message": "Combined Excel generated successfully"
+            # "file_path": excel_generator.file_path
         }
 
     except Exception as e:

@@ -4,7 +4,7 @@ import { required } from './utils/validators';
 import  '../css/LoginPage.css';
 import { useNavigate } from "react-router-dom";
 
-// const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:9000";
+// const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
  
 export default function LoginPage({ onSubmit: parentOnSubmit } = {}) {
   const [patToken, setPatToken] = useState(''); // react state variables

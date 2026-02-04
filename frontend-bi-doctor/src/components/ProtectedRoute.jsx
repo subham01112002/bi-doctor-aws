@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 
-// const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:9000";
+// const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
 
 export default function ProtectedRoute({ children }) {
   const [isAuth, setIsAuth] = useState(null); // null = checking

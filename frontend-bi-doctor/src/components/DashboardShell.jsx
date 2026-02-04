@@ -8,7 +8,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowRightFromBracket } from "@fortawesome/free-solid-svg-icons";
 // import { Database, UploadCloud } from "lucide-react";
  
-// const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:9000";
+// const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
 
 // Helper function to get cookie by name with proper formatting by cleaning
 function getCookie(name) {

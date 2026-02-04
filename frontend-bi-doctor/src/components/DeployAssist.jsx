@@ -4,7 +4,7 @@ import ProgressBar from "./ProgressBar";
 import "../css/TableauMetadataExtractor.css";
 import "../css/DeployAssist.css";
 
-// const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:9000";
+// const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
 
 export default function DeployAssist() {
   const [step, setStep] = useState(1);

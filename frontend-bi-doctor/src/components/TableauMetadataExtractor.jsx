@@ -6,7 +6,7 @@ import { useNavigate } from "react-router-dom";
 // import { faArrowRightFromBracket } from "@fortawesome/free-solid-svg-icons";
 
 
-// const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:9000";
+// const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
 export default function TableauMetadataExtractor() {
   const [biTool, setBiTool] = useState("Tableau");
   const [reports, setReports] = useState([]);
