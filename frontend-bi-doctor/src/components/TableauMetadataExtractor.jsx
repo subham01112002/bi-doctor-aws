@@ -6,7 +6,7 @@ import { useNavigate } from "react-router-dom";
 // import { faArrowRightFromBracket } from "@fortawesome/free-solid-svg-icons";
 
 
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:9000";
+// const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:9000";
 export default function TableauMetadataExtractor() {
   const [biTool, setBiTool] = useState("Tableau");
   const [reports, setReports] = useState([]);
@@ -54,7 +54,7 @@ export default function TableauMetadataExtractor() {
 }, [selectedProject]);
   
   useEffect(() => {
-  fetch(`${API_BASE}/tableau/projects`, {
+  fetch(`/bi/tableau/projects`, {
     credentials: "include",
   })
     .then((res) => {
@@ -75,7 +75,7 @@ export default function TableauMetadataExtractor() {
     return;
   }
 
-  fetch(`${API_BASE}/tableau/workbooks?project_luid=${selectedProject}`, {
+  fetch(`/bi/tableau/workbooks?project_luid=${selectedProject}`, {
     credentials: "include",
   })
     .then(res => res.json())
@@ -92,7 +92,7 @@ useEffect(() => {
     setDsList([]);
     return;
   }
-  fetch(`${API_BASE}/tableau/datasources?project_vizportal_url_id=${selectedProjectVizportalUrlId}`, {
+  fetch(`/bi/tableau/datasources?project_vizportal_url_id=${selectedProjectVizportalUrlId}`, {
       credentials: "include",
     })
       .then(res => res.json())
@@ -120,7 +120,7 @@ const handleDownloadMetadata = async () => {
     const workbook_ids = selectedWorkbooks.map(wb => wb.id);
     console.log("Selected Workbook LUIDs:", workbook_luids);
     console.log("Selected Workbook IDs:", workbook_ids);
-    const res = await fetch(`${API_BASE}/tableau/workbook_metadata`, {
+    const res = await fetch(`/bi/tableau/workbook_metadata`, {
       method: "POST",
       credentials: "include",
       headers: {
@@ -144,7 +144,7 @@ const handleDownloadMetadata = async () => {
     const datasource_ids = selectedDatasources.map(ds => ds.id);
     console.log("Selected Datasource LUIDs:", datasource_luids);
     console.log("Selected Datasource IDs:", datasource_ids);
-    const dsres =  await fetch(`${API_BASE}/tableau/datasource_metadata`, {
+    const dsres =  await fetch(`/bi/tableau/datasource_metadata`, {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
@@ -157,7 +157,7 @@ const handleDownloadMetadata = async () => {
     console.log("Datasource Metadata:", datasourceData);
 
     // Step 3: Generate combined Excel file
-    const excelRes = await fetch(`${API_BASE}/tableau/generate_combined_excel`, {
+    const excelRes = await fetch(`/bi/tableau/generate_combined_excel`, {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
@@ -223,7 +223,7 @@ const TABLEAU_SERVER_URL = "https://us-west-2b.online.tableau.com"
     try {
       console.log("🚀 Authenticating with Tableau...");
 
-      const response = await fetch(`${API_BASE}/auth/tableau-auth`, {
+      const response = await fetch(`/bi/auth/tableau-auth`, {
         method: "POST",
         credentials: "include",
       });
@@ -252,7 +252,7 @@ const TABLEAU_SERVER_URL = "https://us-west-2b.online.tableau.com"
   };
 const handleSignOut = async () => {
   try {
-    await fetch(`${API_BASE}/auth/logout`, {
+    await fetch(`/bi/auth/logout`, {
       method: "POST",
       credentials: "include",
     })

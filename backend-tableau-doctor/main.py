@@ -57,7 +57,7 @@ def init_clients( token_name=None, token_value=None,tableau_token: str | None = 
 #     return {"jwt": getJwt()}
 
 # 2) Test Tableau login
-@app.post("/auth/login")
+@app.post("/bi/auth/login")
 def login(req: LoginRequest,response: Response):
     try:
         auth_client, _ = init_clients(
@@ -83,14 +83,14 @@ def login(req: LoginRequest,response: Response):
     except Exception as e:
         raise HTTPException(500, str(e))
     
-@app.get("/auth/me")
+@app.get("/bi/auth/me")
 def auth_me(tableau_token: str | None = Cookie(default=None)):
     if not tableau_token:
         raise HTTPException(status_code=401, detail="Not authenticated")
     return {"authenticated": True}
     
 # 3) Test workbook dropdown loader
-@app.get("/tableau/projects")
+@app.get("/bi/tableau/projects")
 def load_projects( tableau_token: str | None = Cookie(default=None),tableau_site_id: str | None = Cookie(default=None)):
     try:
         if not tableau_token or not tableau_site_id:
@@ -133,7 +133,7 @@ def load_projects( tableau_token: str | None = Cookie(default=None),tableau_site
         raise HTTPException(500, str(e))
     
 
-@app.get("/tableau/workbooks")
+@app.get("/bi/tableau/workbooks")
 def get_workbooks_for_project(
     project_luid: str,
     tableau_token: str | None = Cookie(default=None),
@@ -181,7 +181,7 @@ def get_workbooks_for_project(
 
     return filtered_workbooks
 
-@app.get("/tableau/datasources")
+@app.get("/bi/tableau/datasources")
 def get_datasources_for_project(
     project_vizportal_url_id: str,
     tableau_token: str | None = Cookie(default=None),
@@ -221,7 +221,7 @@ def get_datasources_for_project(
 
 # Import your source_db function
 from ExaGen_Tb_Migrator_Tool.source_db import get_datasource_connection_info
-@app.get("/tableau/datasource_connection")
+@app.get("/bi/tableau/datasource_connection")
 def get_datasource_connection(
     datasource_luid: str,
     tableau_token: str | None = Cookie(default=None),
@@ -246,7 +246,7 @@ class MetadataRequest(BaseModel):
     workbook_luids: list[str]
     
 
-@app.post("/tableau/workbook_metadata")
+@app.post("/bi/tableau/workbook_metadata")
 def get_workbooks_metadata_for_project(req: MetadataRequest, tableau_token: str | None = Cookie(default=None),tableau_site_id: str | None = Cookie(default=None)):
     try:
         if not tableau_token or not tableau_site_id:
@@ -384,7 +384,7 @@ class DsMetadataRequest(BaseModel):
     datasource_ids: List[str]
     datasource_luids: List[str]
 
-@app.post("/tableau/datasource_metadata")
+@app.post("/bi/tableau/datasource_metadata")
 def get_datasource_metadata_for_project(req: DsMetadataRequest, tableau_token: str | None = Cookie(default=None),tableau_site_id: str | None = Cookie(default=None)):
     try:
         if not tableau_token or not tableau_site_id:
@@ -432,7 +432,7 @@ class GenerateExcelRequest(BaseModel):
     workbook_data: dict
     datasource_data: dict
 
-@app.post("/tableau/generate_combined_excel")
+@app.post("/bi/tableau/generate_combined_excel")
 def generate_combined_excel(req: GenerateExcelRequest, tableau_token: str | None = Cookie(default=None), tableau_site_id: str | None = Cookie(default=None)):
     """
     Generate a single Excel file combining workbook and datasource metadata.
@@ -530,7 +530,7 @@ def generate_combined_excel(req: GenerateExcelRequest, tableau_token: str | None
     
 
 # 5) sign out
-@app.post("/auth/logout")
+@app.post("/bi/auth/logout")
 def logout(
     response: Response,
     tableau_token: str | None = Cookie(default=None),
@@ -566,7 +566,7 @@ class TestConnectionRequest(BaseModel):
     password: str
 
 # 6. Test DB Connection
-@app.post("/db/test-connection")
+@app.post("/bi/db/test-connection")
 def test_db_connection(req: TestConnectionRequest):
     """
     Test database connection with provided credentials
@@ -674,7 +674,7 @@ class DeployRequest(BaseModel):
     target_project_luid: str
     datasources: List[DatasourceDeployConfig]
 
-@app.post("/deploy/full-migration")
+@app.post("/bi/deploy/full-migration")
 async def deploy_full_migration(req: DeployRequest):
     try:
         # Generate unique task ID
@@ -892,7 +892,7 @@ async def progress_generator(task_id: str):
             del progress_store[task_id]
 
 
-@app.get("/deploy/progress/{task_id}")
+@app.get("/bi/deploy/progress/{task_id}")
 async def stream_progress(task_id: str):
     """SSE endpoint for real-time progress"""
     print(f"🔌 [SSE] Connection request for task: {task_id}")
@@ -911,7 +911,7 @@ async def stream_progress(task_id: str):
 
 
 # ✅ CHANGE 15: Add health check endpoint for ALB
-@app.get("/health")
+@app.get("/bi/health")
 async def health_check():
     return {
         "status": "healthy",
@@ -921,7 +921,7 @@ async def health_check():
 
 
 # ✅ CHANGE 16: Add debug endpoint to check task status
-@app.get("/deploy/status/{task_id}")
+@app.get("/bi/deploy/status/{task_id}")
 async def get_task_status(task_id: str):
     """Check if task exists in progress store"""
     if task_id in progress_store:
@@ -938,7 +938,7 @@ async def get_task_status(task_id: str):
 
 
 # ✅ CHANGE 17: Add endpoint to list all active tasks (debugging)
-@app.get("/deploy/tasks")
+@app.get("/bi/deploy/tasks")
 async def list_active_tasks():
     """List all active deployment tasks"""
     return {
@@ -1061,7 +1061,7 @@ def _generate_summary_sheet(excel_generator, workbook_counts, datasource_counts)
 from project_workbook_list import TableauCloudClient
 
 
-@app.get("/tableau/projects_list")
+@app.get("/bi/tableau/projects_list")
 def load_projects(
     tableau_token: str | None = Cookie(default=None),
     tableau_token_name: str | None = Cookie(default=None),
@@ -1092,7 +1092,7 @@ def load_projects(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.get("/tableau/sqlproxy-workbooks")
+@app.get("/bi/tableau/sqlproxy-workbooks")
 def load_sqlproxy_workbooks(
     project_luid: str,
     tableau_token: str | None = Cookie(default=None),
@@ -1116,12 +1116,6 @@ def load_sqlproxy_workbooks(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     
-
-# secretId = "dfc4b32c-6624-4516-8fb3-457725a28d6a"
-# secretValue = "hHTHdubZxJzvWKHTErxiTCB8TNVLWjBxBMx5B2NIs/0="
-# clientId = "333b9ed3-0f3c-492a-9fa3-262c34cdbc00"
-# username = "rahul.neogi@exavalu.com" #Make it dynamic per username
-# tokenExpiryInMinutes = 1  
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -1142,7 +1136,7 @@ class TableauAuthResponse(BaseModel):
     site_id: str
     dashboard_url: str
 
-@app.post("/auth/tableau-auth", response_model=TableauAuthResponse)
+@app.post("/bi/auth/tableau-auth", response_model=TableauAuthResponse)
 async def get_tableau_token(
     tableau_token: str | None = Cookie(default=None),
     tableau_site_id: str | None = Cookie(default=None),

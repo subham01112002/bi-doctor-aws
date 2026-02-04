@@ -4,7 +4,7 @@ import ProgressBar from "./ProgressBar";
 import "../css/TableauMetadataExtractor.css";
 import "../css/DeployAssist.css";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:9000";
+// const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:9000";
 
 export default function DeployAssist() {
   const [step, setStep] = useState(1);
@@ -224,7 +224,7 @@ useEffect(() => {
 
     setTestingConnection(true);
     try {
-      const response = await fetch(`${API_BASE}/db/test-connection`, {
+      const response = await fetch("/bi/db/test-connection", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -277,7 +277,7 @@ useEffect(() => {
 
   // Fetch projects on component mount
   useEffect(() => {
-    fetch(`${API_BASE}/tableau/projects_list`, {
+    fetch(`/bi/tableau/projects_list`, {
       credentials: "include",
     })
       .then((res) => {
@@ -302,7 +302,7 @@ useEffect(() => {
     fetchControllerRef.current = controller;
     setLoadingWorkbooks(true);
 
-    fetch(`${API_BASE}/tableau/sqlproxy-workbooks?project_luid=${selectedProject}`, {
+    fetch(`/bi/tableau/sqlproxy-workbooks?project_luid=${selectedProject}`, {
       credentials: "include",
       signal: controller.signal //` Pass abort signal
     })
@@ -385,7 +385,7 @@ useEffect(() => {
     setLoadingDbInfo(true);
     try {
       const res = await fetch(
-        `${API_BASE}/tableau/datasource_connection?datasource_luid=${currentDatasource.luid}`,
+        `/bi/tableau/datasource_connection?datasource_luid=${currentDatasource.luid}`,
         { credentials: "include" }
       );
 
@@ -435,7 +435,7 @@ useEffect(() => {
       setLoadingDbInfo(true);
       try {
         const res = await fetch(
-          `${API_BASE}/tableau/datasource_connection?datasource_luid=${currentDatasource.luid}`,
+          `/bi/tableau/datasource_connection?datasource_luid=${currentDatasource.luid}`,
           { credentials: "include",
             signal: controller.signal
            }
@@ -522,7 +522,7 @@ const handleDeploy = async () => {
   try {
     // ✅ CHANGE 1: Start deployment
     console.log(" Starting deployment...");
-    const res = await fetch(`${API_BASE}/deploy/full-migration`, {
+    const res = await fetch(`/bi/deploy/full-migration`, {
       method: "POST",
       credentials: "include",
       headers: {
@@ -551,7 +551,7 @@ const handleDeploy = async () => {
     // ✅ CHANGE 3: Verify task exists before connecting SSE
     console.log(" Verifying task exists...");
     try {
-      const statusRes = await fetch(`${API_BASE}/deploy/status/${taskId}`, {
+      const statusRes = await fetch(`/bi/deploy/status/${taskId}`, {
         credentials: "include"
       });
       const statusData = await statusRes.json();
