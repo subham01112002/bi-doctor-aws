@@ -567,10 +567,10 @@ const handleDeploy = async () => {
     }
 
     // ✅ CHANGE 4: Connect to SSE
-    console.log(` Connecting to SSE: ${API_BASE}/deploy/progress/${taskId}`);
+    console.log(` Connecting to SSE: /bi/deploy/progress/${taskId}`);
     
     eventSource = new EventSource(
-      `${API_BASE}/deploy/progress/${taskId}`,
+      `/bi/deploy/progress/${taskId}`,
       { withCredentials: true }
     );
 
