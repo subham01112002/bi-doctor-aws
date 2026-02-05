@@ -4,7 +4,7 @@ import { required } from './utils/validators';
 import  '../css/LoginPage.css';
 import { useNavigate } from "react-router-dom";
 
-// const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
+const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:9000";
  
 export default function LoginPage({ onSubmit: parentOnSubmit } = {}) {
   const [patToken, setPatToken] = useState(''); // react state variables
@@ -17,7 +17,7 @@ export default function LoginPage({ onSubmit: parentOnSubmit } = {}) {
 
   // Default submit - posts token_name and token_value to backend
   const defaultOnSubmit = useCallback(async ({ token_name, token_value }) => {
-  const url = `/bi/auth/login`;
+  const url = `${API_BASE}/auth/login`;
      // send as JSON
     const res = await fetch(url, {
      method: "POST",
