@@ -74,12 +74,12 @@ def login(req: LoginRequest,response: Response):
             httponly=True,     # JS cannot access
             secure=False,      # True in production (HTTPS)
             samesite="lax",
-            max_age=60 * 60   # 1 hour
+            max_age= 7200   # 2 hour
         )
-        response.set_cookie("tableau_site_id", site_id, httponly=True, max_age=3600)
-        response.set_cookie("tableau_token_name", req.token_name, httponly=True, max_age=3600)
-        response.set_cookie("tableau_token_value", req.token_value, httponly=True, max_age=3600)
-        response.set_cookie("username", username, httponly=False, max_age=3600)
+        response.set_cookie("tableau_site_id", site_id, httponly=True, max_age=7200)
+        response.set_cookie("tableau_token_name", req.token_name, httponly=True, max_age=7200)
+        response.set_cookie("tableau_token_value", req.token_value, httponly=True, max_age=7200)
+        response.set_cookie("username", username, httponly=False, max_age=7200)
 
         return {"site_id": site_id, "tableau_token": auth_token, "username": username}
     except Exception as e:
