@@ -525,7 +525,6 @@ def generate_combined_excel(req: GenerateExcelRequest, tableau_token: str | None
             local_file_path=excel_generator.file_path,
             bucket="tableau-doctor-output"
         )
-        os.remove(excel_generator.file_path)
 
         return {
             "message": "Combined Excel generated successfully"
@@ -783,7 +782,7 @@ async def progress_generator(task_id: str):
             
             # ✅ CHANGE 6: Log waiting status every 2 seconds
             if int(waited * 10) % 20 == 0:
-                print(f"⏳ [SSE] Waiting for task {task_id}... ({waited:.1f}s)")
+                print(f"[SSE] Waiting for task {task_id}... ({waited:.1f}s)")
         
         if task_id not in progress_store:
             print(f"❌ [SSE] Task {task_id} NOT FOUND after {timeout}s")
@@ -835,7 +834,7 @@ async def progress_generator(task_id: str):
                     last_message = current_message
                     consecutive_same = 0
                     
-                    print(f"📤 [SSE] Sent: Stage {current_stage} - {current_message}")
+                    print(f"[SSE] Sent: Stage {current_stage} - {current_message}")
                 else:
                     consecutive_same += 1
                     

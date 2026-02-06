@@ -6,7 +6,7 @@ tableau:
   logging:
     logfilepath: C:/logs/app.log
   output:
-    directory: C:/metadata_output
+    directory: /tmp/metadata_output
   server:
     url: https://us-west-2b.online.tableau.com
   site:

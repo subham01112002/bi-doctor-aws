@@ -14,7 +14,8 @@ def upload_excel_to_s3(local_file_path: str, bucket: str, key_prefix: str = "exp
             Bucket=bucket,
             Key=s3_key
         )
-
+        if os.path.exists(local_file_path):
+            os.remove(local_file_path)
         return s3_key
 
     except FileNotFoundError as e:
@@ -25,3 +26,6 @@ def upload_excel_to_s3(local_file_path: str, bucket: str, key_prefix: str = "exp
 
     except Exception as e:
         raise RuntimeError("Unexpected error occurred during S3 upload") from e
+    finally:        
+        if os.path.exists(local_file_path):
+            os.remove(local_file_path)
