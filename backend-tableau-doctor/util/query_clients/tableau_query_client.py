@@ -205,34 +205,36 @@ class TableauQueryClient:
                             upstreamColumns {{
                                 name
                                 table {{
-                                name
-                                }}
-                            }}
-                            downstreamSheets {{
-                                id
-                                name
-                                containedInDashboards {{
-                                    id
                                     name
-                                }}
-                                workbook {{
-                                    name
-                                    id
-                                    luid
-                                    projectName
-                                    updatedAt
-                                    description
-                                    createdAt
-                                    projectVizportalUrlId
-                                    owner {{
+                                    downstreamSheets {{
                                         id
-                                        username
-                                    }}
-                                    tags {{
                                         name
+                                        containedInDashboards {{
+                                            id
+                                            name
+                                        }}
+                                        workbook {{
+                                            name
+                                            id
+                                            luid
+                                            projectName
+                                            updatedAt
+                                            description
+                                            createdAt
+                                            projectVizportalUrlId
+                                            owner {{
+                                                id
+                                                username
+                                            }}
+                                            tags {{
+                                                name
+                                            }}
+                                        }}
                                     }}
                                 }}
-                            }}
+                            }}    
+                                
+                            
                         }}
                         upstreamTables {{
                             name
@@ -250,9 +252,9 @@ class TableauQueryClient:
                             }}
                         }}
                     }}
-                    }}
-                    """ # Construct and return the metadata query
-            
+                }}
+                
+                    """ # Construct and return the metadata query            
             return query
         except ValueError as e:
             logging.error(f'Value Error: {e}')

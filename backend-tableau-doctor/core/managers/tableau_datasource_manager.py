@@ -18,16 +18,17 @@ class TableauDatasourceDataManager:
         flat_datasource_data = []
         
         for ds in self.datasource_metadata_response.publishedDatasources:
-            # Datasource level attributes
-            ds_project_id = ds.projectVizportalUrlId
-            ds_project = ds.projectName
-            datasource_id = ds.id
-            datasource_name = ds.name
-            created_date_ds = ds.createdAt
-            updated_date_ds = ds.updatedAt
-            contains_extract = ds.hasExtracts
-            tags_ds = ", ".join([t.name for t in ds.tags]) if ds.tags else ""
-            datasource_type = ds.field_type
+            # Datasource level attributes - ensure proper string conversion
+            ds_project_id = str(ds.projectVizportalUrlId) if ds.projectVizportalUrlId else ""
+            ds_project = str(ds.projectName) if ds.projectName else ""
+            datasource_id = str(ds.id) if ds.id else ""
+            datasource_luid = str(ds.luid) if ds.luid else ""
+            datasource_name = str(ds.name) if ds.name else ""
+            created_date_ds = str(ds.createdAt) if ds.createdAt else ""
+            updated_date_ds = str(ds.updatedAt) if ds.updatedAt else ""
+            contains_extract = str(ds.hasExtracts) if ds.hasExtracts is not None else ""
+            tags_ds = ", ".join([str(t.name) for t in ds.tags]) if ds.tags else ""
+            datasource_type = str(ds.field_type) if ds.field_type else ""
             
             # Build table->column mapping for custom query tracking
             table_column_query_map = {}
@@ -42,62 +43,58 @@ class TableauDatasourceDataManager:
             
             # Iterate through fields in the datasource
             for field in ds.fields:
-                field_id = field.id
-                field_name = field.name
-                field_type = field.field_type
-                formula = None
+                field_id = str(field.id) if field.id else ""
+                field_name = str(field.name) if field.name else ""
+                field_type = str(field.field_type) if field.field_type else ""
+                formula = str(field.formula) if field.formula else ""
                 
-                # If it's a calculated field, get the formula
-                if field_type == 'CalculatedField':
-                    formula = field.formula
-                
-                # Get upstream columns info
-                upstream_columns_info = []
+                # Get upstream columns and their tables' downstream sheets
                 if field.upstreamColumns and len(field.upstreamColumns) > 0:
                     for upstream_col in field.upstreamColumns:
-                        col_name = upstream_col.name
-                        table_name = upstream_col.table.name if upstream_col.table else ""
+                        col_name = str(upstream_col.name) if upstream_col.name else ""
+                        table_name = str(upstream_col.table.name) if upstream_col.table and upstream_col.table.name else ""
                         # Check if this column comes from a custom query
-                        query_id = table_column_query_map.get((table_name, col_name), "")
+                        query_id = str(table_column_query_map.get((table_name, col_name), ""))
                         
-                        upstream_columns_info.append({
-                            'column': col_name,
-                            'table': table_name,
-                            'query': query_id
-                        })
-                
-                # Get downstream sheets info
-                if field.downstreamSheets and len(field.downstreamSheets) > 0:
-                    for sheet in field.downstreamSheets:
-                        sheet_id = sheet.id
-                        sheet_name = sheet.name
-                        used_in_sheet = "Y"
-                        
-                        # Get workbook info (this is at sheet level, not dashboard level)
-                        workbook = sheet.workbook
-                        workbook_id = workbook.id
-                        workbook_name = workbook.name
-                        workbook_luid = workbook.luid
-                        created_date_wb = workbook.createdAt
-                        updated_date_wb = workbook.updatedAt
-                        tags_wb = ", ".join([t.name for t in workbook.tags]) if workbook.tags else ""
-                        description = workbook.description if workbook.description else ""
-                        wb_project = workbook.projectName
-                        wb_project_id = workbook.projectVizportalUrlId
-                        
-                        # Check if sheet is in dashboards
-                        if sheet.containedInDashboards and len(sheet.containedInDashboards) > 0:
-                            for dashboard in sheet.containedInDashboards:
-                                dashboard_id = dashboard.id
-                                dashboard_name = dashboard.name
+                        # Check if the table exists and has downstream sheets
+                        if upstream_col.table and upstream_col.table.downstreamSheets and len(upstream_col.table.downstreamSheets) > 0:
+                            # Loop through each sheet that uses this table
+                            for sheet in upstream_col.table.downstreamSheets:
+                                sheet_id = str(sheet.id) if sheet.id else ""
+                                sheet_name = str(sheet.name) if sheet.name else ""
+                                used_in_sheet = "Y"
                                 
-                                # Create rows for each upstream column (with dashboard info)
-                                if upstream_columns_info:
-                                    for col_info in upstream_columns_info:
+                                # ===== CRITICAL FIX: Check if workbook exists =====
+                                if sheet.workbook:
+                                    workbook = sheet.workbook
+                                    workbook_id = str(workbook.id) if workbook.id else ""
+                                    workbook_name = str(workbook.name) if workbook.name else ""
+                                    workbook_luid = str(workbook.luid) if workbook.luid else ""
+                                    created_date_wb = str(workbook.createdAt) if workbook.createdAt else ""
+                                    updated_date_wb = str(workbook.updatedAt) if workbook.updatedAt else ""
+                                    tags_wb = ", ".join([str(t.name) for t in workbook.tags]) if workbook.tags else ""
+                                    description = str(workbook.description) if workbook.description else ""
+                                    wb_project = str(workbook.projectName) if workbook.projectName else ""
+                                    wb_project_id = str(workbook.projectVizportalUrlId) if workbook.projectVizportalUrlId else ""
+                                else:
+                                    # Workbook is None - use empty values
+                                    logging.warning(f"Sheet {sheet_id} ({sheet_name}) has no workbook information")
+                                    workbook_id = workbook_name = workbook_luid = ""
+                                    created_date_wb = updated_date_wb = tags_wb = description = ""
+                                    wb_project = wb_project_id = ""
+                                
+                                # Check if sheet is in dashboards
+                                if sheet.containedInDashboards and len(sheet.containedInDashboards) > 0:
+                                    # Loop through each dashboard containing this sheet
+                                    for dashboard in sheet.containedInDashboards:
+                                        dashboard_id = str(dashboard.id) if dashboard.id else ""
+                                        dashboard_name = str(dashboard.name) if dashboard.name else ""
+                                        
                                         flat_datasource_data.append({
                                             "DSProject ID": ds_project_id,
                                             "DSProject": ds_project,
                                             "Datasource ID": datasource_id,
+                                            "datasource_luid":datasource_luid,
                                             "Datasource": datasource_name,
                                             "CreatedDate": created_date_ds,
                                             "UpdatedDate": updated_date_ds,
@@ -108,8 +105,8 @@ class TableauDatasourceDataManager:
                                             "FieldName": field_name,
                                             "FieldType": field_type,
                                             "Formula": formula,
-                                            "Column": col_info['column'],
-                                            "Table": col_info['table'],
+                                            "Column": col_name,
+                                            "Table": table_name,
                                             "Sheet ID": sheet_id,
                                             "Sheet": sheet_name,
                                             "UsedInSheet": used_in_sheet,
@@ -124,15 +121,16 @@ class TableauDatasourceDataManager:
                                             "Description": description,
                                             "WBProject": wb_project,
                                             "WBProjectID": wb_project_id,
-                                            "CustomQueryID": col_info['query'],
+                                            "CustomQueryID": query_id,
                                             "Flag": "Datasource"
                                         })
                                 else:
-                                    # No upstream columns but in dashboard
+                                    # Sheet not in any dashboard
                                     flat_datasource_data.append({
                                         "DSProject ID": ds_project_id,
                                         "DSProject": ds_project,
                                         "Datasource ID": datasource_id,
+                                        "datasource_luid":datasource_luid,
                                         "Datasource": datasource_name,
                                         "CreatedDate": created_date_ds,
                                         "UpdatedDate": updated_date_ds,
@@ -143,45 +141,8 @@ class TableauDatasourceDataManager:
                                         "FieldName": field_name,
                                         "FieldType": field_type,
                                         "Formula": formula,
-                                        "Column": "",
-                                        "Table": "",
-                                        "Sheet ID": sheet_id,
-                                        "Sheet": sheet_name,
-                                        "UsedInSheet": used_in_sheet,
-                                        "Dashboard ID": dashboard_id,
-                                        "Dashboard": dashboard_name,
-                                        "Workbook ID": workbook_id,
-                                        "Workbook": workbook_name,
-                                        "WorkbookLUID": workbook_luid,
-                                        "WBCreatedDate": created_date_wb,
-                                        "WBUpdatedDate": updated_date_wb,
-                                        "WBTags": tags_wb,
-                                        "Description": description,
-                                        "WBProject": wb_project,
-                                        "WBProjectID": wb_project_id,
-                                        "CustomQueryID": "",
-                                        "Flag": "Datasource"
-                                    })
-                        else:
-                            # Sheet not in any dashboard
-                            if upstream_columns_info:
-                                for col_info in upstream_columns_info:
-                                    flat_datasource_data.append({
-                                        "DSProject ID": ds_project_id,
-                                        "DSProject": ds_project,
-                                        "Datasource ID": datasource_id,
-                                        "Datasource": datasource_name,
-                                        "CreatedDate": created_date_ds,
-                                        "UpdatedDate": updated_date_ds,
-                                        "ContainsExtract": contains_extract,
-                                        "Tags": tags_ds,
-                                        "DataSorceType": datasource_type,
-                                        "FieldID": field_id,
-                                        "FieldName": field_name,
-                                        "FieldType": field_type,
-                                        "Formula": formula,
-                                        "Column": col_info['column'],
-                                        "Table": col_info['table'],
+                                        "Column": col_name,
+                                        "Table": table_name,
                                         "Sheet ID": sheet_id,
                                         "Sheet": sheet_name,
                                         "UsedInSheet": used_in_sheet,
@@ -196,52 +157,16 @@ class TableauDatasourceDataManager:
                                         "Description": description,
                                         "WBProject": wb_project,
                                         "WBProjectID": wb_project_id,
-                                        "CustomQueryID": col_info['query'],
+                                        "CustomQueryID": query_id,
                                         "Flag": "Datasource"
                                     })
-                            else:
-                                # No upstream columns and not in dashboard
-                                flat_datasource_data.append({
-                                    "DSProject ID": ds_project_id,
-                                    "DSProject": ds_project,
-                                    "Datasource ID": datasource_id,
-                                    "Datasource": datasource_name,
-                                    "CreatedDate": created_date_ds,
-                                    "UpdatedDate": updated_date_ds,
-                                    "ContainsExtract": contains_extract,
-                                    "Tags": tags_ds,
-                                    "DataSorceType": datasource_type,
-                                    "FieldID": field_id,
-                                    "FieldName": field_name,
-                                    "FieldType": field_type,
-                                    "Formula": formula,
-                                    "Column": "",
-                                    "Table": "",
-                                    "Sheet ID": sheet_id,
-                                    "Sheet": sheet_name,
-                                    "UsedInSheet": used_in_sheet,
-                                    "Dashboard ID": "",
-                                    "Dashboard": "",
-                                    "Workbook ID": workbook_id,
-                                    "Workbook": workbook_name,
-                                    "WorkbookLUID": workbook_luid,
-                                    "WBCreatedDate": created_date_wb,
-                                    "WBUpdatedDate": updated_date_wb,
-                                    "WBTags": tags_wb,
-                                    "Description": description,
-                                    "WBProject": wb_project,
-                                    "WBProjectID": wb_project_id,
-                                    "CustomQueryID": "",
-                                    "Flag": "Datasource"
-                                })
-                else:
-                    # Field has no downstream sheets - still include datasource/field info
-                    if upstream_columns_info:
-                        for col_info in upstream_columns_info:
+                        else:
+                            # Upstream column exists but its table has no downstream sheets
                             flat_datasource_data.append({
                                 "DSProject ID": ds_project_id,
                                 "DSProject": ds_project,
                                 "Datasource ID": datasource_id,
+                                "datasource_luid": datasource_luid,
                                 "Datasource": datasource_name,
                                 "CreatedDate": created_date_ds,
                                 "UpdatedDate": updated_date_ds,
@@ -252,8 +177,8 @@ class TableauDatasourceDataManager:
                                 "FieldName": field_name,
                                 "FieldType": field_type,
                                 "Formula": formula,
-                                "Column": col_info['column'],
-                                "Table": col_info['table'],
+                                "Column": col_name,
+                                "Table": table_name,
                                 "Sheet ID": "",
                                 "Sheet": "",
                                 "UsedInSheet": "N",
@@ -268,49 +193,49 @@ class TableauDatasourceDataManager:
                                 "Description": "",
                                 "WBProject": "",
                                 "WBProjectID": "",
-                                "CustomQueryID": col_info['query'],
+                                "CustomQueryID": query_id,
                                 "Flag": "Datasource"
                             })
-                    else:
-                        # No upstream columns and no downstream sheets
-                        flat_datasource_data.append({
-                            "DSProject ID": ds_project_id,
-                            "DSProject": ds_project,
-                            "Datasource ID": datasource_id,
-                            "Datasource": datasource_name,
-                            "CreatedDate": created_date_ds,
-                            "UpdatedDate": updated_date_ds,
-                            "ContainsExtract": contains_extract,
-                            "Tags": tags_ds,
-                            "DataSorceType": datasource_type,
-                            "FieldID": field_id,
-                            "FieldName": field_name,
-                            "FieldType": field_type,
-                            "Formula": formula,
-                            "Column": "",
-                            "Table": "",
-                            "Sheet ID": "",
-                            "Sheet": "",
-                            "UsedInSheet": "N",
-                            "Dashboard ID": "",
-                            "Dashboard": "",
-                            "Workbook ID": "",
-                            "Workbook": "",
-                            "WorkbookLUID": "",
-                            "WBCreatedDate": "",
-                            "WBUpdatedDate": "",
-                            "WBTags": "",
-                            "Description": "",
-                            "WBProject": "",
-                            "WBProjectID": "",
-                            "CustomQueryID": "",
-                            "Flag": "Datasource"
-                        })
-        
+                else:
+                    # Field has no upstream columns
+                    flat_datasource_data.append({
+                        "DSProject ID": ds_project_id,
+                        "DSProject": ds_project,
+                        "Datasource ID": datasource_id,
+                        "datasource_luid": datasource_luid,
+                        "Datasource": datasource_name,
+                        "CreatedDate": created_date_ds,
+                        "UpdatedDate": updated_date_ds,
+                        "ContainsExtract": contains_extract,
+                        "Tags": tags_ds,
+                        "DataSorceType": datasource_type,
+                        "FieldID": field_id,
+                        "FieldName": field_name,
+                        "FieldType": field_type,
+                        "Formula": formula,
+                        "Column": "",
+                        "Table": "",
+                        "Sheet ID": "",
+                        "Sheet": "",
+                        "UsedInSheet": "N",
+                        "Dashboard ID": "",
+                        "Dashboard": "",
+                        "Workbook ID": "",
+                        "Workbook": "",
+                        "WorkbookLUID": "",
+                        "WBCreatedDate": "",
+                        "WBUpdatedDate": "",
+                        "WBTags": "",
+                        "Description": "",
+                        "WBProject": "",
+                        "WBProjectID": "",
+                        "CustomQueryID": "",
+                        "Flag": "Datasource"
+                    })
+    
         logging.info("Flattened: Datasource Details at Datasource Level")
-        return flat_datasource_data 
-    
-    
+        return flat_datasource_data
+
     def get_flat_ds_custom_queries(self):
         flat_query_data = []
         seen = set() # deduplicate tracker

@@ -2,6 +2,7 @@ import logging
 from fastapi import FastAPI, HTTPException, logger
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, HTTPException, Response, Cookie
+import requests
 from util.auth_clients.tableau_auth import TableauAuthClient
 from util.query_clients.tableau_query_client import TableauQueryClient
 from util.config_managers.tableau_reader import TableauConfigManager
@@ -41,10 +42,12 @@ progress_store = {}
 
 app.add_middleware(
     CORSMiddleware,
+    
     allow_origins=["http://localhost:8080"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    
 )
 
 def init_clients( token_name=None, token_value=None,tableau_token: str | None = None,site_id: str | None = None):
@@ -90,51 +93,89 @@ def auth_me(tableau_token: str | None = Cookie(default=None)):
     if not tableau_token:
         raise HTTPException(status_code=401, detail="Not authenticated")
     return {"authenticated": True}
-    
+        
+def refresh_tableau_session(response: Response, token_name: str, token_value: str):
+    """
+    Force a fresh Tableau REST sign-in and overwrite cookies.
+    Used ONLY when metadata token is invalidated.
+    """
+    auth_client, _ = init_clients(
+        token_name=token_name,
+        token_value=token_value
+    )
+
+    new_token, new_site_id, username = auth_client.sign_in()
+
+    # overwrite cookies
+    response.set_cookie("tableau_token", new_token, httponly=True, max_age=7200)
+    response.set_cookie("tableau_site_id", new_site_id, httponly=True, max_age=7200)
+    response.set_cookie("username", username, httponly=False, max_age=7200)
+
+    logging.warning("🔄 Tableau REST session refreshed")
+
+    return new_token, new_site_id        
 # 3) Test workbook dropdown loader
 @app.get("/bi/tableau/projects")
-def load_projects( tableau_token: str | None = Cookie(default=None),tableau_site_id: str | None = Cookie(default=None)):
-    try:
-        if not tableau_token or not tableau_site_id:
-            raise HTTPException(401, "Not authenticated")
+def load_projects(
+    response: Response,
+    tableau_token: str | None = Cookie(default=None),
+    tableau_site_id: str | None = Cookie(default=None),
+    tableau_token_name: str | None = Cookie(default=None),
+    tableau_token_value: str | None = Cookie(default=None),
+):
+    if not tableau_token or not tableau_site_id:
+        raise HTTPException(401, "Not authenticated")
 
+    def fetch_projects(token, site_id):
         auth_client, qc = init_clients(
-            tableau_token=tableau_token,
-            site_id=tableau_site_id
+            tableau_token=token,
+            site_id=site_id
         )
         query = qc.query_loader()
-        result = qc.send_request(query)
-        workbooks = result["data"]["workbooks"]
-        print("RAW METADATA RESPONSE:", result) 
+        return qc.send_request(query)
 
-        workbooks = result.get("data", {}).get("workbooks", [])
-        print("WORKBOOK COUNT:", len(workbooks))
-        project_map ={}
-        for wb in workbooks:
-            project_luid = wb.get("projectLuid")
-            project_name = wb.get("projectName")
-            projectvizporturl_id = wb.get("projectVizportalUrlId")
+    try:
+        # First attempt
+        result = fetch_projects(tableau_token, tableau_site_id)
 
-            if project_luid and project_name and projectvizporturl_id:
-                project_map[project_luid] = {
-                                                "project_name": project_name,
-                                                "projectvizporturl_id": projectvizporturl_id
-                                            }
+    except requests.exceptions.HTTPError as e:
+        #  THIS IS THE IMPORTANT PART
+        if e.response is not None and e.response.status_code == 401:
+            logging.warning(" Metadata token invalidated. Re-authenticating...")
 
-        projects = [
-            {
-                "project_luid": pluid,
-                "project_name": pdata["project_name"],
-                "projectvizporturl_id": pdata["projectvizporturl_id"]
+            if not tableau_token_name or not tableau_token_value:
+                raise HTTPException(401, "Session expired. Please login again.")
+
+            # Re-login and overwrite cookies
+            new_token, new_site_id = refresh_tableau_session(
+                response,
+                tableau_token_name,
+                tableau_token_value
+            )
+
+            # Retry ONCE
+            result = fetch_projects(new_token, new_site_id)
+        else:
+            raise
+
+    workbooks = result.get("data", {}).get("workbooks", [])
+    project_map = {}
+
+    for wb in workbooks:
+        if wb.get("projectLuid") and wb.get("projectName") and wb.get("projectVizportalUrlId"):
+            project_map[wb["projectLuid"]] = {
+                "project_name": wb["projectName"],
+                "projectvizporturl_id": wb["projectVizportalUrlId"]
             }
-            for pluid, pdata in project_map.items()
-        ]
-        return projects
-    
-    except Exception as e:
-        raise HTTPException(500, str(e))
-    
 
+    return [
+        {
+            "project_luid": k,
+            "project_name": v["project_name"],
+            "projectvizporturl_id": v["projectvizporturl_id"]
+        }
+        for k, v in project_map.items()
+    ]
 @app.get("/bi/tableau/workbooks")
 def get_workbooks_for_project(
     project_luid: str,
@@ -202,6 +243,7 @@ def get_datasources_for_project(
 
     # FILTER + DISTINCT for datasource details (based on projectVizportalUrlId)
     datasources = datasource_result.get("data", {}).get("publishedDatasources", [])
+    logging.info(f"datasources retrieved: {datasources}")
     ds_seen = set()
     filtered_datasources = []
 
@@ -242,152 +284,61 @@ def get_datasource_connection(
     except Exception as e:
         raise HTTPException(500, str(e))
 
-# # 4) Test full workbook metadata
+from fastapi import FastAPI, HTTPException, Cookie
+from typing import List, Dict, Any
+import logging
+from threading import Lock
+
+# ============ GLOBAL STORAGE ============
+# Thread-safe storage for metadata
+metadata_storage: Dict[str, Dict[str, Any]] = {}
+storage_lock = Lock()
+
+def store_metadata(session_key: str, metadata_type: str, data: Any):
+    """Thread-safe storage of metadata"""
+    with storage_lock:
+        if session_key not in metadata_storage:
+            metadata_storage[session_key] = {}
+        metadata_storage[session_key][metadata_type] = data
+        logging.info(f"Stored {metadata_type} for session {session_key}")
+
+def get_metadata(session_key: str) -> Dict[str, Any]:
+    """Thread-safe retrieval of metadata"""
+    with storage_lock:
+        return metadata_storage.get(session_key, {})
+
+def clear_metadata(session_key: str):
+    """Thread-safe cleanup of metadata"""
+    with storage_lock:
+        if session_key in metadata_storage:
+            del metadata_storage[session_key]
+            logging.info(f"Cleared metadata for session {session_key}")
+
+
+# ============ MODELS ============
 class MetadataRequest(BaseModel):
     workbook_ids: list[str]
     workbook_luids: list[str]
-    
-
-@app.post("/bi/tableau/workbook_metadata")
-def get_workbooks_metadata_for_project(req: MetadataRequest, tableau_token: str | None = Cookie(default=None),tableau_site_id: str | None = Cookie(default=None)):
-    try:
-        if not tableau_token or not tableau_site_id:
-            raise HTTPException(401, "Not authenticated")
-
-        auth_client, qc = init_clients(
-            tableau_token=tableau_token,
-            site_id=tableau_site_id
-        )
-        print("req.workbook_ids:", req.workbook_ids)
-        print("req.workbook_luids:", req.workbook_luids)
-        query = qc.query_workbook_metadata(req.workbook_ids)
-        raw_metadata = qc.send_request(query)
-
-        query_usage_stats = qc.get_usage_stats_wb(req.workbook_luids)
-
-        #  Convert raw response → WorkbooksResponse model
-        full_workbook_data = WorkbooksResponse.parse_obj(
-            raw_metadata["data"]
-        )
-
-        #  Initialize DataManager (FLATTENING happens here)
-        data_manager = TableauDataManager(full_workbook_data)
-
-        flat_data_wb = data_manager.get_flat_wb_data()
-        flat_data_embd, flat_data_query = data_manager.get_flat_embd_data()
-
-        #  Fetch usage stats
-        usage_stats_response = qc.get_usage_stats_wb(
-            workbook_luids=req.workbook_luids
-        )
-
-        # #  Prepare Excel package (4 sheets)
-        # package = [
-        #     {
-        #         "sheet_name": "Dashboard Details",
-        #         "payload": flat_data_wb,
-        #         'columns':[
-        #             'Project ID',
-        #             'Project',
-        #             'Workbook ID',
-        #             'Workbook',
-        #             'Workbook Owner ID',
-        #             'Workbook Owner Username',
-        #             'Dashboard ID',
-        #             'Dashboard',
-        #             'Sheet ID',
-        #             'Sheet',
-        #             'Field ID',
-        #             'Field',
-        #             'Field Type',
-        #             'Datasource ID',
-        #             'Datasource',
-        #             'Table Name',
-        #             'Column Name',
-        #             'Formula'
-        #         ],
-        #     },
-        #     {
-        #         "sheet_name": "Datasource Details",
-        #         "payload": flat_data_embd,
-        #         'columns':[
-        #             'Project ID',
-        #             'Project',
-        #             'Workbook ID',
-        #             'Workbook',
-        #             'Datasource ID',
-        #             'Datasource',
-        #             'Table',
-        #             'Column',
-        #             'Used In Sheet',
-        #             'Custom Query'
-        #         ],
-        #     },
-        #     {
-        #         "sheet_name": "Custom Query Details",
-        #         "payload": flat_data_query,
-        #         'columns':[
-        #             'Project ID',
-        #             'Project',
-        #             'Workbook ID',
-        #             'Workbook',
-        #             'Custom Query ID',
-        #             'Custom Query',
-        #             'Query'
-        #         ],
-        #     },
-        #     {
-        #         "sheet_name": "Usage Statistics",
-        #         "payload": usage_stats_response,
-        #         'columns':[
-        #             'Project ID',
-        #             'project',
-        #             'workbook ID',
-        #             'Workbook',
-        #             #'Data Source',
-        #             'View ID',
-        #             'View',
-        #             'created_at',
-        #             'updated_at',
-        #             'Total Views'
-        #         ],
-        #     },
-        # ]
-
-        # #  Generate Excel
-        # excel_generator = TableauExcellGenerator(package=package)
-        # excel_generator.generate_spreadsheet()
-        # excel_generator.format_excel()
-        # write_summary_counts(excel_generator,data_manager)
-
-        # return {
-        #     "message": "Excel generated successfully",
-        #     "file_path": excel_generator.file_path
-        # }
-        #return raw_metadata["data"]["workbooks"], query_usage_stats
-        # Return both raw metadata and processed data for potential Excel generation
-        return {
-            "raw_workbooks": raw_metadata["data"]["workbooks"],
-            "usage_stats": query_usage_stats,
-            "processed_data": {
-                "workbook_details": flat_data_wb,
-                "datasource_details": flat_data_embd,
-                "custom_query_details": flat_data_query,
-                "usage_statistics": usage_stats_response,
-                "workbook_counts": data_manager.get_workbook_counts(),
-                "datasource_counts": data_manager.get_datasource_counts()
-            }
-        }
-    except Exception as e:
-        raise HTTPException(500, str(e))
+    session_key: str  # Add session identifier
 
 
 class DsMetadataRequest(BaseModel):
     datasource_ids: List[str]
     datasource_luids: List[str]
+    session_key: str  # Add session identifier
 
-@app.post("/bi/tableau/datasource_metadata")
-def get_datasource_metadata_for_project(req: DsMetadataRequest, tableau_token: str | None = Cookie(default=None),tableau_site_id: str | None = Cookie(default=None)):
+
+class GenerateExcelRequest(BaseModel):
+    session_key: str  # Only need session key now
+
+
+# ============ WORKBOOK METADATA ENDPOINT ============
+@app.post("/bi/tableau/workbook_metadata")
+def get_workbooks_metadata_for_project(
+    req: MetadataRequest, 
+    tableau_token: str | None = Cookie(default=None),
+    tableau_site_id: str | None = Cookie(default=None)
+):
     try:
         if not tableau_token or not tableau_site_id:
             raise HTTPException(401, "Not authenticated")
@@ -396,57 +347,153 @@ def get_datasource_metadata_for_project(req: DsMetadataRequest, tableau_token: s
             tableau_token=tableau_token,
             site_id=tableau_site_id
         )
-        print("REQUESTED DATASOURCE IDS:", req.datasource_ids)
+        
+        logging.info(f"Processing workbook metadata for session: {req.session_key}")
+        
+        query = qc.query_workbook_metadata(req.workbook_ids)
+        raw_metadata = qc.send_request(query)
+
+        # Convert raw response → WorkbooksResponse model
+        full_workbook_data = WorkbooksResponse.parse_obj(
+            raw_metadata["data"]
+        )
+
+        # Initialize DataManager (FLATTENING happens here)
+        data_manager = TableauDataManager(full_workbook_data)
+
+        flat_data_wb = data_manager.get_flat_wb_data()
+        flat_data_embd, flat_data_query = data_manager.get_flat_embd_data()
+
+        # Fetch usage stats
+        usage_stats_response = qc.get_usage_stats_wb(
+            workbook_luids=req.workbook_luids
+        )
+
+        # STORE IN GLOBAL VARIABLE instead of returning
+        workbook_processed_data = {
+            "workbook_details": flat_data_wb,
+            "datasource_details": flat_data_embd,
+            "custom_query_details": flat_data_query,
+            "usage_statistics": usage_stats_response,
+            "workbook_counts": data_manager.get_workbook_counts(),
+            "datasource_counts": data_manager.get_datasource_counts()
+        }
+        
+        store_metadata(req.session_key, "workbook", workbook_processed_data)
+        
+        logging.info(f"Workbook data stored: {len(flat_data_wb)} rows")
+
+        # Return minimal response
+        return {
+            "status": "success",
+            "message": "Workbook metadata processed",
+            "session_key": req.session_key,
+            "row_counts": {
+                "workbook_details": len(flat_data_wb),
+                "datasource_details": len(flat_data_embd),
+                "custom_query_details": len(flat_data_query),
+                "usage_statistics": len(usage_stats_response)
+            }
+        }
+        
+    except Exception as e:
+        logging.error(f"Error in workbook_metadata: {str(e)}", exc_info=True)
+        raise HTTPException(500, str(e))
+
+
+# ============ DATASOURCE METADATA ENDPOINT ============
+@app.post("/bi/tableau/datasource_metadata")
+def get_datasource_metadata_for_project(
+    req: DsMetadataRequest, 
+    tableau_token: str | None = Cookie(default=None),
+    tableau_site_id: str | None = Cookie(default=None)
+):
+    try:
+        if not tableau_token or not tableau_site_id:
+            raise HTTPException(401, "Not authenticated")
+
+        auth_client, qc = init_clients(
+            tableau_token=tableau_token,
+            site_id=tableau_site_id
+        )
+        
+        logging.info(f"Processing datasource metadata for session: {req.session_key}")
+        
         ds_query = qc.query_datasource_metadata(req.datasource_ids)
         raw_metadata_ds = qc.send_request(ds_query)
 
-        #query_usage_stats = qc.get_usage_stats_wb(req.workbook_luids)
-
-        #  Convert raw response → DatasourceMetadataResponse model
+        # Convert raw response → DatasourceMetadataResponse model
         full_datasource_data = DatasourceMetadataResponse.parse_obj(
             raw_metadata_ds["data"]
         )
 
-        #  Initialize DataManager (FLATTENING happens here)
+        # Initialize DataManager (FLATTENING happens here)
         ds_data_manager = TableauDatasourceDataManager(full_datasource_data)
 
         flat_datasource_details = ds_data_manager.get_flat_datasource_details()
         flat_datasource_custom_query = ds_data_manager.get_flat_ds_custom_queries()
         
-        # print(get_flat_datasource_details)
-        #  Fetch usage stats
-        # usage_stats_response = qc.get_usage_stats_wb(
-        #     workbook_luids=req.workbook_luids
-        # )
-        return {
-            "raw_datasources": raw_metadata_ds["data"]["publishedDatasources"],
-            "processed_data": {
-                "datasource_details": flat_datasource_details,
-                "custom_query_details": flat_datasource_custom_query,
-            }
-        # return raw_metadata_ds["data"]["datasources"]
+        logging.info(f"Flattened {len(flat_datasource_details)} datasource rows")
+        logging.info(f"Flattened {len(flat_datasource_custom_query)} custom query rows")
+
+        # STORE IN GLOBAL VARIABLE instead of returning
+        datasource_processed_data = {
+            "datasource_details": flat_datasource_details,
+            "custom_query_details": flat_datasource_custom_query,
         }
+        
+        store_metadata(req.session_key, "datasource", datasource_processed_data)
+        
+        # Return minimal response
+        return {
+            "status": "success",
+            "message": "Datasource metadata processed",
+            "session_key": req.session_key,
+            "row_counts": {
+                "datasource_details": len(flat_datasource_details),
+                "custom_query_details": len(flat_datasource_custom_query)
+            }
+        }
+        
     except Exception as e:
+        logging.error(f"Error in datasource_metadata: {str(e)}", exc_info=True)
         raise HTTPException(500, str(e))
 
 
-class GenerateExcelRequest(BaseModel):
-    workbook_data: dict
-    datasource_data: dict
-
+# ============ GENERATE EXCEL ENDPOINT ============
 @app.post("/bi/tableau/generate_combined_excel")
-def generate_combined_excel(req: GenerateExcelRequest, tableau_token: str | None = Cookie(default=None), tableau_site_id: str | None = Cookie(default=None)):
+def generate_combined_excel(
+    req: GenerateExcelRequest, 
+    tableau_token: str | None = Cookie(default=None), 
+    tableau_site_id: str | None = Cookie(default=None)
+):
     """
     Generate a single Excel file combining workbook and datasource metadata.
-    Expects processed data from both workbook_metadata and datasource_metadata endpoints.
+    Retrieves data from global storage using session_key.
     """
     try:
         if not tableau_token or not tableau_site_id:
             raise HTTPException(401, "Not authenticated")
 
-        # Extract workbook processed data
-        wb_processed = req.workbook_data.get("processed_data", {})
-        ds_processed = req.datasource_data.get("processed_data", {})
+        logging.info(f"Generating Excel for session: {req.session_key}")
+        
+        # RETRIEVE FROM GLOBAL STORAGE
+        session_data = get_metadata(req.session_key)
+        
+        if not session_data:
+            raise HTTPException(400, f"No metadata found for session {req.session_key}")
+        
+        wb_processed = session_data.get("workbook", {})
+        ds_processed = session_data.get("datasource", {})
+        
+        if not wb_processed:
+            raise HTTPException(400, "Workbook metadata not found. Please fetch workbook metadata first.")
+        
+        if not ds_processed:
+            raise HTTPException(400, "Datasource metadata not found. Please fetch datasource metadata first.")
+        
+        logging.info(f"Retrieved workbook data: {len(wb_processed.get('workbook_details', []))} rows")
+        logging.info(f"Retrieved datasource data: {len(ds_processed.get('datasource_details', []))} rows")
 
         # ============ COMBINED EXCEL PACKAGE ============
         package = [
@@ -460,14 +507,14 @@ def generate_combined_excel(req: GenerateExcelRequest, tableau_token: str | None
                     'Field ID', 'Field', 'Field Type',
                     'Datasource ID', 'Datasource', 'Table Name',
                     'Column Name', 'Formula'
-                    ],
+                ],
             },
             {
                 "sheet_name": "WB_Datasource Details",
                 "payload": wb_processed.get("datasource_details", []),
-                'columns': [
+                 'columns': [
                     'WB_Project ID', 'WB_Project', 'Workbook ID', 'Workbook LUID', 'Workbook', 'WB_Created Date', 'WB_Updated Date', 'WB_Tags', 'Description',
-                    'Datasource ID', 'Datasource', 'DS_Created Date', 'DS_Updated Date', 'DS_Project ID', 'DS_Project', 'DS_Tags', 'Contains Extract', 'DataSource Type',
+                    'Datasource ID', 'datasource_luid', 'Datasource', 'DS_Created Date', 'DS_Updated Date', 'DS_Project ID', 'DS_Project', 'DS_Tags', 'Contains Extract', 'DataSource Type',
                     'Field ID', 'Field Name', 'Field Type', 'Formula', 'Table', 'Column', 'Sheet ID', 'Sheet', 'Used In Sheet', 'Dashboard ID', 'Dashboard', 'Custom Query', 'Flag'
                 ],
             },
@@ -476,7 +523,7 @@ def generate_combined_excel(req: GenerateExcelRequest, tableau_token: str | None
                 "payload": wb_processed.get("custom_query_details", []),
                 'columns': [
                     'Project ID', 'Project', 'Workbook ID', 'Workbook',
-                    'Custom Query ID', 'Custom Query', 'Query','Flag'
+                    'Custom Query ID', 'Custom Query', 'Query', 'Flag'
                 ],
             },
             {
@@ -491,7 +538,7 @@ def generate_combined_excel(req: GenerateExcelRequest, tableau_token: str | None
                 "sheet_name": "DS_Datasource Details",
                 "payload": ds_processed.get("datasource_details", []),
                 "columns": [
-                    "DS_Project ID", "DS_Project", "Datasource ID", "Datasource", "DS_Created Date", "DS_Updated Date", "Contains Extract",
+                    "DS_Project ID", "DS_Project", "Datasource ID","datasource_luid", "Datasource", "DS_Created Date", "DS_Updated Date", "Contains Extract",
                     "DS_Tags", "DataSource Type", "Field ID", "Field Name", "Field Type", "Formula", "Column", "Table", "Sheet ID", "Sheet",
                     "Used In Sheet", "Dashboard ID", "Dashboard", "Workbook ID", "Workbook", "Workbook LUID", "WB_Created Date", "WB_Updated Date",
                     "WB_Tags", "Description", "WB_Project", "WB_Project ID", "Custom Query", "Flag"
@@ -502,11 +549,13 @@ def generate_combined_excel(req: GenerateExcelRequest, tableau_token: str | None
                 "payload": ds_processed.get("custom_query_details", []),
                 'columns': [
                     'Project ID', 'Project', 'Workbook ID', 'Workbook',
-                    'Custom Query ID', 'Custom Query', 'Query',"Flag"
+                    'Custom Query ID', 'Custom Query', 'Query', "Flag"
                 ],
             },
         ]
 
+        logging.info("Package created, generating Excel...")
+        
         # Generate Excel
         excel_generator = TableauExcellGenerator(package=package)
         excel_generator.generate_spreadsheet()
@@ -521,20 +570,28 @@ def generate_combined_excel(req: GenerateExcelRequest, tableau_token: str | None
             workbook_counts, 
             datasource_counts
         )
+
+        logging.info(f"Excel generated successfully: {excel_generator.file_path}")
+        
+        # CLEAN UP GLOBAL STORAGE
+        clear_metadata(req.session_key)
+        
+        
         s3_key = upload_excel_to_s3(
             local_file_path=excel_generator.file_path,
             bucket="tableau-doctor-output"
         )
-
         return {
             "message": "Combined Excel generated successfully"
             # "file_path": excel_generator.file_path
         }
 
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(500, str(e))
+        logging.error(f"Error in generate_combined_excel: {str(e)}", exc_info=True)
+        raise HTTPException(500, f"Excel generation error: {str(e)}")
     
-
 # 5) sign out
 @app.post("/bi/auth/logout")
 def logout(
@@ -1068,7 +1125,7 @@ from project_workbook_list import TableauCloudClient
 
 
 @app.get("/bi/tableau/projects_list")
-def load_projects(
+def load_projects_list(
     tableau_token: str | None = Cookie(default=None),
     tableau_token_name: str | None = Cookie(default=None),
     tableau_token_value: str | None = Cookie(default=None)
@@ -1094,8 +1151,11 @@ def load_projects(
             for project in projects
         ]
 
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logging.exception("Unexpected error")
+        raise HTTPException(500, "Internal server error")
 
 
 @app.get("/bi/tableau/sqlproxy-workbooks")

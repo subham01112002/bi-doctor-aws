@@ -116,6 +116,10 @@ const handleDownloadMetadata = async () => {
   setLoading(true);
  
   try {
+    // Generate unique session key
+    const sessionKey = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    console.log("Session Key:", sessionKey);
+
     const workbook_luids = selectedWorkbooks.map(wb => wb.luid);
     const workbook_ids = selectedWorkbooks.map(wb => wb.id);
     console.log("Selected Workbook LUIDs:", workbook_luids);
@@ -129,6 +133,7 @@ const handleDownloadMetadata = async () => {
       body: JSON.stringify({
         workbook_ids,
         workbook_luids,
+        session_key: sessionKey  // Pass session key
       }),
     });
  
@@ -148,7 +153,7 @@ const handleDownloadMetadata = async () => {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ datasource_ids , datasource_luids }),
+      body: JSON.stringify({ datasource_ids , datasource_luids, session_key: sessionKey  }), // Pass same session key
     });
     if (!dsres.ok) {
       throw new Error("Failed to fetch datasource metadata");
@@ -162,8 +167,7 @@ const handleDownloadMetadata = async () => {
       credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        workbook_data: workbookData,
-        datasource_data: datasourceData
+          session_key: sessionKey
       }),
     });
     
