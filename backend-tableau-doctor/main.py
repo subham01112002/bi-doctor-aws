@@ -461,36 +461,156 @@ def get_datasource_metadata_for_project(
 
 
 # ============ GENERATE EXCEL ENDPOINT ============
-@app.post("/bi/tableau/generate_combined_excel")
-def generate_combined_excel(
-    req: GenerateExcelRequest, 
-    tableau_token: str | None = Cookie(default=None), 
-    tableau_site_id: str | None = Cookie(default=None)
-):
-    """
-    Generate a single Excel file combining workbook and datasource metadata.
-    Retrieves data from global storage using session_key.
-    """
-    try:
-        if not tableau_token or not tableau_site_id:
-            raise HTTPException(401, "Not authenticated")
+# @app.post("/bi/tableau/generate_combined_excel")
+# def generate_combined_excel(
+#     req: GenerateExcelRequest, 
+#     tableau_token: str | None = Cookie(default=None), 
+#     tableau_site_id: str | None = Cookie(default=None)
+# ):
+#     """
+#     Generate a single Excel file combining workbook and datasource metadata.
+#     Retrieves data from global storage using session_key.
+#     """
+#     try:
+#         if not tableau_token or not tableau_site_id:
+#             raise HTTPException(401, "Not authenticated")
 
-        logging.info(f"Generating Excel for session: {req.session_key}")
+#         logging.info(f"Generating Excel for session: {req.session_key}")
         
-        # RETRIEVE FROM GLOBAL STORAGE
-        session_data = get_metadata(req.session_key)
+#         # RETRIEVE FROM GLOBAL STORAGE
+#         session_data = get_metadata(req.session_key)
         
+#         if not session_data:
+#             raise HTTPException(400, f"No metadata found for session {req.session_key}")
+        
+#         wb_processed = session_data.get("workbook", {})
+#         ds_processed = session_data.get("datasource", {})
+        
+#         if not wb_processed:
+#             raise HTTPException(400, "Workbook metadata not found. Please fetch workbook metadata first.")
+        
+#         if not ds_processed:
+#             raise HTTPException(400, "Datasource metadata not found. Please fetch datasource metadata first.")
+        
+#         logging.info(f"Retrieved workbook data: {len(wb_processed.get('workbook_details', []))} rows")
+#         logging.info(f"Retrieved datasource data: {len(ds_processed.get('datasource_details', []))} rows")
+
+#         # ============ COMBINED EXCEL PACKAGE ============
+#         package = [
+#             {
+#                 "sheet_name": "WB_Dashboard Details",
+#                 "payload": wb_processed.get("workbook_details", []),
+#                 'columns': [
+#                     'Project ID', 'Project', 'Workbook ID', 'Workbook',
+#                     'Workbook Owner ID', 'Workbook Owner Username',
+#                     'Dashboard ID', 'Dashboard', 'Sheet ID', 'Sheet',
+#                     'Field ID', 'Field', 'Field Type',
+#                     'Datasource ID', 'Datasource', 'Table Name',
+#                     'Column Name', 'Formula'
+#                 ],
+#             },
+#             {
+#                 "sheet_name": "WB_Datasource Details",
+#                 "payload": wb_processed.get("datasource_details", []),
+#                  'columns': [
+#                     'WB_Project ID', 'WB_Project', 'Workbook ID', 'Workbook LUID', 'Workbook', 'WB_Created Date', 'WB_Updated Date', 'WB_Tags', 'Description',
+#                     'Datasource ID', 'datasource_luid', 'Datasource', 'DS_Created Date', 'DS_Updated Date', 'DS_Project ID', 'DS_Project', 'DS_Tags', 'Contains Extract', 'DataSource Type',
+#                     'Field ID', 'Field Name', 'Field Type', 'Formula', 'Table', 'Column', 'Sheet ID', 'Sheet', 'Used In Sheet', 'Dashboard ID', 'Dashboard', 'Custom Query', 'Flag'
+#                 ],
+#             },
+#             {
+#                 "sheet_name": "WB_Custom Query Details",
+#                 "payload": wb_processed.get("custom_query_details", []),
+#                 'columns': [
+#                     'Project ID', 'Project', 'Workbook ID', 'Workbook',
+#                     'Custom Query ID', 'Custom Query', 'Query', 'Flag'
+#                 ],
+#             },
+#             {
+#                 "sheet_name": "WB_Usage Statistics",
+#                 "payload": wb_processed.get("usage_statistics", []),
+#                 'columns': [
+#                     'Project ID', 'project', 'workbook ID', 'Workbook',
+#                     'View ID', 'View', 'created_at', 'updated_at', 'Total Views'
+#                 ],
+#             },
+#             {
+#                 "sheet_name": "DS_Datasource Details",
+#                 "payload": ds_processed.get("datasource_details", []),
+#                 "columns": [
+#                     "DS_Project ID", "DS_Project", "Datasource ID","datasource_luid", "Datasource", "DS_Created Date", "DS_Updated Date", "Contains Extract",
+#                     "DS_Tags", "DataSource Type", "Field ID", "Field Name", "Field Type", "Formula", "Column", "Table", "Sheet ID", "Sheet",
+#                     "Used In Sheet", "Dashboard ID", "Dashboard", "Workbook ID", "Workbook", "Workbook LUID", "WB_Created Date", "WB_Updated Date",
+#                     "WB_Tags", "Description", "WB_Project", "WB_Project ID", "Custom Query", "Flag"
+#                 ],
+#             },
+#             {
+#                 "sheet_name": "DS_Custom Query Details",
+#                 "payload": ds_processed.get("custom_query_details", []),
+#                 'columns': [
+#                     'Project ID', 'Project', 'Workbook ID', 'Workbook',
+#                     'Custom Query ID', 'Custom Query', 'Query', "Flag"
+#                 ],
+#             },
+#         ]
+
+#         logging.info("Package created, generating Excel...")
+        
+#         # Generate Excel
+#         excel_generator = TableauExcellGenerator(package=package)
+#         excel_generator.generate_spreadsheet()
+#         excel_generator.format_excel()
+        
+#         # Generate summary sheet with combined counts
+#         workbook_counts = wb_processed.get("workbook_counts", [])
+#         datasource_counts = wb_processed.get("datasource_counts", [])
+        
+#         write_summary_counts_from_data(
+#             excel_generator, 
+#             workbook_counts, 
+#             datasource_counts
+#         )
+
+#         logging.info(f"Excel generated successfully: {excel_generator.file_path}")
+        
+#         # CLEAN UP GLOBAL STORAGE
+#         clear_metadata(req.session_key)
+        
+        
+#         s3_key = upload_excel_to_s3(
+#             local_file_path=excel_generator.file_path,
+#             bucket="tableau-doctor-output"
+#         )
+#         return {
+#             "message": "Combined Excel generated successfully"
+#             # "file_path": excel_generator.file_path
+#         }
+
+#     except HTTPException:
+#         raise
+#     except Exception as e:
+#         logging.error(f"Error in generate_combined_excel: {str(e)}", exc_info=True)
+#         raise HTTPException(500, f"Excel generation error: {str(e)}")
+
+
+def generate_excel_worker(session_key: str):
+    excel_generator = None
+    try:
+        logging.info(f"[THREAD] Generating Excel for session: {session_key}")
+
+        # Retrieve metadata
+        session_data = get_metadata(session_key)
         if not session_data:
-            raise HTTPException(400, f"No metadata found for session {req.session_key}")
+            raise Exception(f"No metadata found for session {session_key}")
         
         wb_processed = session_data.get("workbook", {})
         ds_processed = session_data.get("datasource", {})
-        
+
         if not wb_processed:
-            raise HTTPException(400, "Workbook metadata not found. Please fetch workbook metadata first.")
+            raise Exception("Workbook metadata not found")
         
         if not ds_processed:
-            raise HTTPException(400, "Datasource metadata not found. Please fetch datasource metadata first.")
+            raise Exception("Datasource metadata not found")
         
         logging.info(f"Retrieved workbook data: {len(wb_processed.get('workbook_details', []))} rows")
         logging.info(f"Retrieved datasource data: {len(ds_processed.get('datasource_details', []))} rows")
@@ -571,27 +691,51 @@ def generate_combined_excel(
             datasource_counts
         )
 
-        logging.info(f"Excel generated successfully: {excel_generator.file_path}")
-        
-        # CLEAN UP GLOBAL STORAGE
-        clear_metadata(req.session_key)
-        
-        
-        s3_key = upload_excel_to_s3(
+        # Upload to S3
+        upload_excel_to_s3(
             local_file_path=excel_generator.file_path,
             bucket="tableau-doctor-output"
         )
-        return {
-            "message": "Combined Excel generated successfully"
-            # "file_path": excel_generator.file_path
-        }
 
-    except HTTPException:
-        raise
+        logging.info("[THREAD] Excel generated & uploaded successfully")
+
     except Exception as e:
-        logging.error(f"Error in generate_combined_excel: {str(e)}", exc_info=True)
-        raise HTTPException(500, f"Excel generation error: {str(e)}")
-    
+        logging.error(f"[THREAD] Excel generation failed: {e}", exc_info=True)
+
+    finally:
+        # Cleanup memory
+        clear_metadata(session_key)
+
+        # Cleanup disk
+        if excel_generator and os.path.exists(excel_generator.file_path):
+            os.remove(excel_generator.file_path)
+
+        logging.info(f"[THREAD] Cleanup completed for session {session_key}")
+
+@app.post("/bi/tableau/generate_combined_excel")
+def generate_combined_excel(
+    req: GenerateExcelRequest,
+    tableau_token: str | None = Cookie(default=None),
+    tableau_site_id: str | None = Cookie(default=None)
+):
+    if not tableau_token or not tableau_site_id:
+        raise HTTPException(401, "Not authenticated")
+
+    logging.info(f"Received Excel request for session: {req.session_key}")
+
+    thread = threading.Thread(
+        target=generate_excel_worker,
+        args=(req.session_key,),
+        daemon=True
+    )
+    thread.start()
+
+    return {
+        "status": "started",
+        "message": "Excel generation started",
+        "session_key": req.session_key
+    }
+
 # 5) sign out
 @app.post("/bi/auth/logout")
 def logout(
