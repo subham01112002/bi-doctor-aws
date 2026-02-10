@@ -105,7 +105,7 @@ useEffect(() => {
     }, [selectedProjectVizportalUrlId]);
 
 const waitForExcel = async (sessionKey) => {
-  const maxAttempts = 60;          // 60 × 5s = 5 minutes
+  const maxAttempts = 90;          // 90 × 10s = 15 minutes
   const intervalMs = 10000;
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
