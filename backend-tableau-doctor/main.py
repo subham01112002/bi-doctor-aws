@@ -592,9 +592,17 @@ def get_datasource_metadata_for_project(
 #         logging.error(f"Error in generate_combined_excel: {str(e)}", exc_info=True)
 #         raise HTTPException(500, f"Excel generation error: {str(e)}")
 
+# ============ EXCEL JOB STATUS ============
+excel_job_status: Dict[str, Dict[str, Any]] = {}
+excel_status_lock = Lock()
 
 def generate_excel_worker(session_key: str):
     excel_generator = None
+    with excel_status_lock:
+        excel_job_status[session_key] = {
+            "status": "processing",
+            "message": "Excel generation in progress"
+        }
     try:
         logging.info(f"[THREAD] Generating Excel for session: {session_key}")
 
@@ -692,15 +700,27 @@ def generate_excel_worker(session_key: str):
         )
 
         # Upload to S3
-        upload_excel_to_s3(
+        s3_key = upload_excel_to_s3(
             local_file_path=excel_generator.file_path,
             bucket="tableau-doctor-output"
         )
+        #  mark completed
+        with excel_status_lock:
+            excel_job_status[session_key] = {
+                "status": "completed",
+                "download_url": f"https://tableau-doctor-output.s3.amazonaws.com/{s3_key}"
+            }
 
+        logging.info("[THREAD] Excel generated & uploaded")
         logging.info("[THREAD] Excel generated & uploaded successfully")
 
     except Exception as e:
         logging.error(f"[THREAD] Excel generation failed: {e}", exc_info=True)
+        with excel_status_lock:
+            excel_job_status[session_key] = {
+                "status": "failed",
+                "message": str(e)
+            }
 
     finally:
         # Cleanup memory
@@ -736,6 +756,18 @@ def generate_combined_excel(
         "session_key": req.session_key
     }
 
+@app.get("/bi/tableau/excel/status")
+def get_excel_status(session_key: str):
+    with excel_status_lock:
+        status = excel_job_status.get(session_key)
+
+    if not status:
+        return {
+            "status": "processing",
+            "message": "Job not found or still initializing"
+        }
+
+    return status
 # 5) sign out
 @app.post("/bi/auth/logout")
 def logout(

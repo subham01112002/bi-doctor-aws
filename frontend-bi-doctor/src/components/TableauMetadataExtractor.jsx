@@ -104,6 +104,38 @@ useEffect(() => {
       .catch(console.error);
     }, [selectedProjectVizportalUrlId]);
 
+const waitForExcel = async (sessionKey) => {
+  const maxAttempts = 60;          // 60 × 5s = 5 minutes
+  const intervalMs = 5000;
+
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    await new Promise((r) => setTimeout(r, intervalMs));
+
+    const res = await fetch(
+      `/bi/tableau/excel/status?session_key=${sessionKey}`,
+      { credentials: "include" }
+    );
+
+    if (!res.ok) {
+      console.warn("Status check failed, retrying...");
+      continue;
+    }
+
+    const data = await res.json();
+
+    if (data.status === "completed") {
+      return data.download_url;   // S3 / presigned URL
+    }
+
+    if (data.status === "failed") {
+      throw new Error(data.message || "Excel generation failed");
+    }
+
+    console.log("Excel still processing...");
+  }
+
+  throw new Error("Excel generation timed out");
+};    
 const handleDownloadMetadata = async () => {
   // if (selectedWorkbooks.length === 0) {
   //   alert("Please select at least one workbook");
@@ -175,12 +207,17 @@ const handleDownloadMetadata = async () => {
       throw new Error("Failed to generate combined Excel");
     }
     
-    const excelResult = await excelRes.json();
-    console.log("Excel Generation Result:", excelResult);
-    // alert(`Metadata downloaded successfully!\n\nFile: ${excelResult.file_path}`);
-    // SUCCESS ALERT
-    alert("Metadata downloaded successfully");
+    // -----------------------------
+    // Step 4: POLLING (NEW)
+    // -----------------------------
+    const downloadUrl = await waitForExcel(sessionKey);
+
+    // Trigger download
+    window.location.href = downloadUrl;
+
+    alert("Metadata downloaded successfully!");
     setMetadataReady(true);
+
     // Step 2 will start from here
   } catch (err) {
     console.error(err);
