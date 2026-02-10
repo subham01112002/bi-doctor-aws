@@ -126,6 +126,13 @@ class TableauQueryClient:
                             ... on CalculatedField {{
                                 formula
                             }}
+                            upstreamColumns {{
+                                name
+                                table {{ name }}
+                                downstreamWorkbooks {{
+                                    id
+                                }}
+                            }}
                         }}
                         upstreamTables {{
                             name
@@ -135,6 +142,14 @@ class TableauQueryClient:
                                 query
                                 columns {{
                                     name
+                                    downstreamFields{{
+                                        id
+                                        name
+                                        __typename
+                                        ... on CalculatedField {{
+                                            formula
+                                        }}
+                                    }}
                                     downstreamWorkbooks {{
                                         id
                                     }}

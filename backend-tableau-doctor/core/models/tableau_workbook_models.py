@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import List, Optional
 
 
@@ -12,10 +12,36 @@ class Datasource(BaseModel):
     id: Optional[str] = None
     name: Optional[str] = None
 
+class DownstreamWorkbook(BaseModel):
+    id: Optional[str] = None
 
 class UpstreamColumn(BaseModel):
     name: Optional[str] = None
-    table: Optional[Table] = None
+    table: List[Table] = Field(default_factory=list)
+    downstreamWorkbooks: List[DownstreamWorkbook] = Field(default_factory=list)
+
+    @field_validator("table", mode="before")
+    @classmethod
+    def normalize_table(cls, v):
+        if v is None:
+            return []
+        if isinstance(v, dict):
+            return [v]           # 👈 wrap single table into list
+        if isinstance(v, list):
+            return v
+        raise TypeError(f"Invalid table type: {type(v)}")
+
+class ContainedInDashboard(BaseModel):
+    # Represents a dashboard that contains a sheet
+    id: Optional[str] = None
+    name: Optional[str] = None
+
+
+class DownstreamSheet(BaseModel):
+    # Represents a sheet that uses a field
+    id: Optional[str] = None
+    name: Optional[str] = None
+    containedInDashboards: Optional[List[ContainedInDashboard]] = []
 
 
 class DatasourceField(BaseModel):
@@ -26,6 +52,7 @@ class DatasourceField(BaseModel):
     upstreamColumns: Optional[List[UpstreamColumn]] = []
     field_type: Optional[str] = Field(None, alias="__typename")
     formula: Optional[str] = None
+    # downstreamSheets: Optional[List[DownstreamSheet]] = []
 
 
 class Sheet(BaseModel):
@@ -49,6 +76,7 @@ class QueryDownStreamWorkbook(BaseModel):
 class QueryColumn(BaseModel):
     # Represents a query column with a name.
     name: Optional[str] = None
+    downstreamFields: Optional[List[DatasourceField]] = []
     downstreamWorkbooks: Optional[List[QueryDownStreamWorkbook]] = []
 
 
@@ -77,6 +105,11 @@ class UpstreamTable(BaseModel):
     columns: Optional[List[TableColumn]] = []
 
 
+class Tag(BaseModel):
+    # Represents a tag with a name
+    name: Optional[str] = None
+
+
 class EmbeddedDatasource(BaseModel):
     # Represents an embedded data source with a name and upstream tables.
     id: Optional[str] = None
@@ -101,7 +134,7 @@ class Workbook(BaseModel):
     createdAt: Optional[str] = None
     updatedAt: Optional[str] = None
     description: Optional[str] = None
-    tags: Optional[List[str]] = []
+    tags: Optional[List[Tag]] = []
     projectName: Optional[str] = None
     #projectLuid: Optional[str] = None
     projectVizportalUrlId: Optional[str] = None
@@ -115,4 +148,3 @@ class Workbook(BaseModel):
 class WorkbooksResponse(BaseModel):
     # Represents a response with a list of workbooks.
     workbooks: Optional[List[Workbook]] = []
-    

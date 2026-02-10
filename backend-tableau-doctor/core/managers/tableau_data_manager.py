@@ -57,8 +57,16 @@ class TableauDataManager:
                         field_id = datasource_field.id
                         field_name = datasource_field.name
                         field_type = datasource_field.field_type
-                        datasource_id= datasource_field.datasource.id
-                        field_source = datasource_field.datasource.name
+                        datasource_id = (
+                            datasource_field.datasource.id
+                            if datasource_field.datasource
+                            else None
+                        )
+                        field_source = (
+                            datasource_field.datasource.name
+                            if datasource_field.datasource
+                            else None
+                        )
                         formula = None
                         # If the field is a calculated field the get the formula
                         if field_type == 'CalculatedField':
@@ -91,7 +99,8 @@ class TableauDataManager:
                         else:
                             for field_column in datasource_field.upstreamColumns:
                                 column_name = field_column.name
-                                table_name = field_column.table.name
+                                for table in field_column.table or []:
+                                    table_name = table.name
                                 
                                 # Append the flattened data for the current field
                                 flat_data_wb.append({
@@ -124,150 +133,176 @@ class TableauDataManager:
     def get_flat_embd_data(self):
         flat_embd_data = []
         flat_query_data = []
+
         print(len(self.full_workbook_data.workbooks))
+
         for workbook in self.full_workbook_data.workbooks:
-            workbook_name = workbook.name
             workbook_id = workbook.id
             workbook_luid = workbook.luid
+            workbook_name = workbook.name
             workbook_createdAt = workbook.createdAt
             workbook_updatedAt = workbook.updatedAt
-            workbook_tags = ', '.join([tag.name for tag in workbook.tags]) if workbook.tags else ''
+            workbook_tags = ', '.join([t.name for t in workbook.tags]) if workbook.tags else ''
             workbook_description = workbook.description
             project_name = workbook.projectName
             project_id = workbook.projectVizportalUrlId
-            dashboard_id = None
-            dashboard_name = None
-            sheet_id = None
-            sheet_name = None
-            for dashboard in workbook.dashboards:
-                dashboard_id = dashboard.id
-                dashboard_name = dashboard.name
-                for sheet in dashboard.sheets:
-                    sheet_id = sheet.id
-                    sheet_name = sheet.name
+
             for embedded_datasource in workbook.embeddedDatasources:
                 embedded_datasource_id = embedded_datasource.id
                 embedded_datasource_name = embedded_datasource.name
                 embedded_datasource_createdAt = embedded_datasource.createdAt
                 embedded_datasource_updatedAt = embedded_datasource.updatedAt
                 embedded_datasource_hasExtracts = embedded_datasource.hasExtracts
-                for field in embedded_datasource.fields:
-                    field_id = field.id
-                    field_name = field.name
-                    field_type = field.field_type
-                    field_formula = None
-                    if field_type == 'CalculatedField':
-                        field_formula = field.formula
-                for upstream_table in embedded_datasource.upstreamTables:
-                    upstream_table_name = upstream_table.name
-                    
-                    # Check if the upstream table is referenced by any queries
-                    if len(upstream_table.referencedByQueries) == 0:
-                        # If not referenced, add each column to flat_embd_data
-                        for column in upstream_table.columns:
-                            column_name = column.name
-                            used_in_workbook = 'N'
-                            
-                            for dswb in column.downstreamWorkbooks:
-                                if workbook_id == dswb.id:
-                                    used_in_workbook = 'Y'
 
-                            flat_embd_data.append({
-                                'project_id': project_id,
-                                'project_name': project_name,
-                                'workbook_id': workbook_id,
-                                'workbook_luid': workbook_luid,
-                                'workbook_name':workbook_name,
-                                'workbook_createdAt':workbook_createdAt,
-                                'workbook_updatedAt':workbook_updatedAt,
-                                'workbook_tags':workbook_tags,
-                                'workbook_description':workbook_description,
-                                'datasource_id':embedded_datasource_id,
-                                'datasource_luid':'',
-                                'datasource_name':embedded_datasource_name,
-                                'created_at':embedded_datasource_createdAt,
-                                'updated_at':embedded_datasource_updatedAt,
-                                'datasource_project_id':'',
-                                'datasource_project_name':'',
-                                'datasource_tags':'',
-                                'has_extracts':embedded_datasource_hasExtracts,
-                                'datasource_type':'EmbeddedDatasource',
-                                'field_id':field_id,
-                                'field_name':field_name,
-                                'field_type':field_type,
-                                'field_formula':field_formula,
-                                'table_name':upstream_table_name,
-                                'column_name':column_name,
-                                'sheet_id':sheet_id,
-                                'sheet_name':sheet_name,
-                                'used_in_workbook':used_in_workbook,
-                                'dashboard_id':dashboard_id,
-                                'dashboard_name':dashboard_name,
-                                'query':'',  # No query associated
-                                'Flag': 'Workbook'
-                            })
-                    else:
-                        # If referenced, process each query referencing the table
-                        i = 1
-                        for referenced_by_query in upstream_table.referencedByQueries:
-                            query = referenced_by_query.query
-                            query_name = referenced_by_query.name
-                            query_id = referenced_by_query.id
+                for dashboard in workbook.dashboards:
+                    dashboard_id = dashboard.id
+                    dashboard_name = dashboard.name
+                    for sheet in dashboard.sheets:
+                        sheet_id = sheet.id
+                        sheet_name = sheet.name
+
+                # Decide ONCE per embedded datasource
+                has_referenced_queries = any(
+                    ut.referencedByQueries
+                    for ut in embedded_datasource.upstreamTables or []
+                )
+
+                # ==========================================================
+                # CASE 1: REFERENCED QUERY EXISTS → QUERY-BASED FLATTENING
+                # ==========================================================
+                if has_referenced_queries:
+
+                    for upstream_table in embedded_datasource.upstreamTables or []:
+                        for referenced_query in upstream_table.referencedByQueries or []:
+
+                            query_id = referenced_query.id
+                            query_name = referenced_query.name
+                            query_text = referenced_query.query
+
                             flat_query_data.append({
                                 'project_id': project_id,
                                 'project_name': project_name,
                                 'workbook_id': workbook_id,
-                                'workbook_name':workbook_name,
-                                'CustomQueryID':query_id,
-                                'CustomQuery':query_name,
-                                'query':query.replace("\r\n", " "),
-                                "Flag": 'Workbook'
+                                'workbook_name': workbook_name,
+                                'CustomQueryID': query_id,
+                                'CustomQuery': query_name,
+                                'query': query_text.replace("\r\n", " ") if query_text else '',
+                                'Flag': 'Workbook'
                             })
-                            # Add each column associated with the query to the flat_embedded_data
-                            for column in referenced_by_query.columns:
+
+                            for column in referenced_query.columns or []:
                                 column_name = column.name
                                 used_in_workbook = 'N'
-                                
-                                for dswb in column.downstreamWorkbooks:
-                                    if workbook_id == dswb.id:
+
+                                for dswb in column.downstreamWorkbooks or []:
+                                    if dswb.id == workbook_id:
                                         used_in_workbook = 'Y'
+                                        break
+                                # NEW: take field info from referencedByFields
+                                for ref_field in column.downstreamFields or [None]:
+                                    flat_embd_data.append({
+                                        'project_id': project_id,
+                                        'project_name': project_name,
+                                        'workbook_id': workbook_id,
+                                        'workbook_luid': workbook_luid,
+                                        'workbook_name': workbook_name,
+                                        'workbook_createdAt': workbook_createdAt,
+                                        'workbook_updatedAt': workbook_updatedAt,
+                                        'workbook_tags': workbook_tags,
+                                        'workbook_description': workbook_description,
+
+                                        'datasource_id': embedded_datasource_id,
+                                        'datasource_luid': '',
+                                        'datasource_name': embedded_datasource_name,
+                                        'created_at': embedded_datasource_createdAt,
+                                        'updated_at': embedded_datasource_updatedAt,
+                                        'datasource_project_id': '',
+                                        'datasource_project_name': '',
+                                        'datasource_tags': '',
+                                        'has_extracts': embedded_datasource_hasExtracts,
+                                        'datasource_type': 'Custom SQL',
+
+                                        # 🔴 Field info intentionally NULL
+                                        'field_id': ref_field.id if ref_field else None,
+                                        'field_name': ref_field.name if ref_field else None,
+                                        'field_type': ref_field.field_type if ref_field else None,
+                                        'field_formula': ref_field.formula if ref_field and ref_field.field_type == 'CalculatedField' else None,
+
+                                        'table_name': upstream_table.name,
+                                        'column_name': column_name,
+
+                                        'sheet_id': sheet_id,
+                                        'sheet_name': sheet_name,
+                                        'used_in_workbook': used_in_workbook,
+                                        'dashboard_id': dashboard_id,
+                                        'dashboard_name': dashboard_name,
+
+                                        'query': query_id,
+                                        'Flag': 'Workbook'
+                                    })
+
+                # ==========================================================
+                # CASE 2: NO REFERENCED QUERY → FIELD / COLUMN-BASED
+                # ==========================================================
+                else:
+
+                    for field in embedded_datasource.fields or []:
+                        field_id = field.id
+                        field_name = field.name
+                        field_type = field.field_type
+                        field_formula = field.formula if field_type == 'CalculatedField' else None
+
+                        for upstream_column in field.upstreamColumns or []:
+                            column_name = upstream_column.name
+
+                            for table in upstream_column.table or []:
+                                table_name = table.name
+
+                                used_in_workbook = 'N'
+                                for dswb in upstream_column.downstreamWorkbooks or []:
+                                    if dswb.id == workbook_id:
+                                        used_in_workbook = 'Y'
+                                        break
 
                                 flat_embd_data.append({
                                     'project_id': project_id,
                                     'project_name': project_name,
                                     'workbook_id': workbook_id,
                                     'workbook_luid': workbook_luid,
-                                    'workbook_name':workbook_name,
-                                    'workbook_createdAt':workbook_createdAt,
-                                    'workbook_updatedAt':workbook_updatedAt,
-                                    'workbook_tags':workbook_tags,
-                                    'workbook_description':workbook_description,
-                                    'datasource_id':embedded_datasource_id,
-                                    'datasource_luid':'',
-                                    'datasource_name':embedded_datasource_name,
-                                    'created_at':embedded_datasource_createdAt,
-                                    'updated_at':embedded_datasource_updatedAt,
-                                    'datasource_project_id':'',
-                                    'datasource_project_name':'',
-                                    'datasource_tags':'',
-                                    'has_extracts':embedded_datasource_hasExtracts,
-                                    'datasource_type':'EmbeddedDatasource',
-                                    'field_id':field_id,
-                                    'field_name':field_name,
-                                    'field_type':field_type,
-                                    'field_formula':field_formula,
-                                    'table_name':upstream_table_name,
-                                    'column_name':column_name,
-                                    'sheet_id':sheet_id,
-                                    'sheet_name':sheet_name,
-                                    'used_in_workbook':used_in_workbook,
-                                    'dashboard_id':dashboard_id,
-                                    'dashboard_name':dashboard_name,
-                                    'query':query_id,
+                                    'workbook_name': workbook_name,
+                                    'workbook_createdAt': workbook_createdAt,
+                                    'workbook_updatedAt': workbook_updatedAt,
+                                    'workbook_tags': workbook_tags,
+                                    'workbook_description': workbook_description,
+
+                                    'datasource_id': embedded_datasource_id,
+                                    'datasource_luid': '',
+                                    'datasource_name': embedded_datasource_name,
+                                    'created_at': embedded_datasource_createdAt,
+                                    'updated_at': embedded_datasource_updatedAt,
+                                    'datasource_project_id': '',
+                                    'datasource_project_name': '',
+                                    'datasource_tags': '',
+                                    'has_extracts': embedded_datasource_hasExtracts,
+                                    'datasource_type': 'EmbeddedDatasource',
+
+                                    'field_id': field_id,
+                                    'field_name': field_name,
+                                    'field_type': field_type,
+                                    'field_formula': field_formula,
+
+                                    'table_name': table_name,
+                                    'column_name': column_name,
+
+                                    'sheet_id': sheet_id,
+                                    'sheet_name': sheet_name,
+                                    'used_in_workbook': used_in_workbook,
+                                    'dashboard_id': dashboard_id,
+                                    'dashboard_name': dashboard_name,
+             
+                                    'query': '',
                                     'Flag': 'Workbook'
                                 })
-                            i += 1 # Increment query index for the next query
-
         logging.info('Flattened: Embedded Data Source Details')
         logging.info('Flattened: Query Details')
         return flat_embd_data, flat_query_data
@@ -356,4 +391,3 @@ class TableauDataManager:
             })
  
         return summary_list
-    
