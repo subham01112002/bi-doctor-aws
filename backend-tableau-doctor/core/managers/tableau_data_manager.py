@@ -76,23 +76,23 @@ class TableauDataManager:
                         column_name=''
                         if len(datasource_field.upstreamColumns) == 0:
                             flat_data_wb.append({
-                                'project_id': project_id,
-                                'project_name': project_name,
-                                'workbook_id': workbook_id,
-                                'workbook_name': workbook_name,
-                                'workbook_owner_id': workbook_owner_id,
-                                'workbook_owner_username': workbook_owner_username,
-                                'dashboard_id': dashboard_id,
-                                'dashboard_name': dashboard_name,
-                                'sheet_id': sheet_id,
-                                'sheet_name':sheet_name,
-                                'field_id':field_id,
-                                'field_name':field_name,
-                                'field_type':field_type,
-                                'datasource_id':datasource_id,
-                                'data_source':field_source,
-                                'table_name':table_name,
-                                'column_name':column_name,
+                                'project_id': project_id if project_id else '',
+                                'project_name': project_name if project_name else '',
+                                'workbook_id': workbook_id if workbook_id else '',
+                                'workbook_name': workbook_name if workbook_name else '',
+                                'workbook_owner_id': workbook_owner_id if workbook_owner_id else '',
+                                'workbook_owner_username': workbook_owner_username if workbook_owner_username else '',
+                                'dashboard_id': dashboard_id if dashboard_id else '',
+                                'dashboard_name': dashboard_name if dashboard_name else '',
+                                'sheet_id': sheet_id if sheet_id else '',
+                                'sheet_name':sheet_name if sheet_name else '',
+                                'field_id':field_id if field_id else '',
+                                'field_name':field_name if field_name else '',
+                                'field_type':field_type if field_type else '',
+                                'datasource_id':datasource_id if datasource_id else '',
+                                'data_source':field_source if field_source else '',
+                                'table_name':table_name if table_name else '',
+                                'column_name':column_name if column_name else '',
                                 'formula':formula,
                                 #'Flag': 'Workbook'
                             })
@@ -104,23 +104,23 @@ class TableauDataManager:
                                 
                                 # Append the flattened data for the current field
                                 flat_data_wb.append({
-                                    'project_id': project_id,
-                                    'project_name': project_name,
-                                    'workbook_id': workbook_id,
-                                    'workbook_name': workbook_name,
-                                    'workbook_owner_id': workbook_owner_id,
-                                    'workbook_owner_username': workbook_owner_username,
-                                    'dashboard_id': dashboard_id,
-                                    'dashboard_name': dashboard_name,
-                                    'sheet_id': sheet_id,
-                                    'sheet_name':sheet_name,
-                                    'field_id':field_id,
-                                    'field_name':field_name,
-                                    'field_type':field_type,
-                                    'datasource_id':datasource_id,
-                                    'data_source':field_source,
-                                    'table_name':table_name,
-                                    'column_name':column_name,
+                                    'project_id': project_id if project_id else '',
+                                    'project_name': project_name if project_name else '',
+                                    'workbook_id': workbook_id if workbook_id else '',
+                                    'workbook_name': workbook_name if workbook_name else '',
+                                    'workbook_owner_id': workbook_owner_id if workbook_owner_id else '',
+                                    'workbook_owner_username': workbook_owner_username if workbook_owner_username else '',
+                                    'dashboard_id': dashboard_id if dashboard_id else '',
+                                    'dashboard_name': dashboard_name if dashboard_name else '',
+                                    'sheet_id': sheet_id if sheet_id else '',
+                                    'sheet_name':sheet_name if sheet_name else '',
+                                    'field_id':field_id if field_id else '',
+                                    'field_name':field_name if field_name else '',
+                                    'field_type':field_type if field_type else '',
+                                    'datasource_id':datasource_id if datasource_id else '',
+                                    'data_source':field_source if field_source else '',
+                                    'table_name':table_name if table_name else '',
+                                    'column_name':column_name if column_name else '',
                                     'formula':formula,
                                     #'Flag': 'Workbook'
                                 })
@@ -146,6 +146,10 @@ class TableauDataManager:
             workbook_description = workbook.description
             project_name = workbook.projectName
             project_id = workbook.projectVizportalUrlId
+            sheet_id = None
+            sheet_name = None
+            dashboard_id = None
+            dashboard_name = None
 
             for embedded_datasource in workbook.embeddedDatasources:
                 embedded_datasource_id = embedded_datasource.id
@@ -180,12 +184,12 @@ class TableauDataManager:
                             query_text = referenced_query.query
 
                             flat_query_data.append({
-                                'project_id': project_id,
-                                'project_name': project_name,
-                                'workbook_id': workbook_id,
-                                'workbook_name': workbook_name,
-                                'CustomQueryID': query_id,
-                                'CustomQuery': query_name,
+                                'project_id': project_id if project_id else '',
+                                'project_name': project_name if project_name else '',
+                                'workbook_id': workbook_id if workbook_id else '',
+                                'workbook_name': workbook_name if workbook_name else '',
+                                'CustomQueryID': query_id if query_id else '',
+                                'CustomQuery': query_name if query_name else '',
                                 'query': query_text.replace("\r\n", " ") if query_text else '',
                                 'Flag': 'Workbook'
                             })
@@ -201,25 +205,25 @@ class TableauDataManager:
                                 # NEW: take field info from referencedByFields
                                 for ref_field in column.downstreamFields or [None]:
                                     flat_embd_data.append({
-                                        'project_id': project_id,
-                                        'project_name': project_name,
-                                        'workbook_id': workbook_id,
-                                        'workbook_luid': workbook_luid,
-                                        'workbook_name': workbook_name,
-                                        'workbook_createdAt': workbook_createdAt,
-                                        'workbook_updatedAt': workbook_updatedAt,
-                                        'workbook_tags': workbook_tags,
-                                        'workbook_description': workbook_description,
+                                        'project_id': project_id if project_id else '',
+                                        'project_name': project_name if project_name else '',
+                                        'workbook_id': workbook_id if workbook_id else '',
+                                        'workbook_luid': workbook_luid if workbook_luid else '',
+                                        'workbook_name': workbook_name if workbook_name else '',
+                                        'workbook_createdAt': workbook_createdAt if workbook_createdAt else '',
+                                        'workbook_updatedAt': workbook_updatedAt if workbook_updatedAt else '',
+                                        'workbook_tags': workbook_tags if workbook_tags else [],
+                                        'workbook_description': workbook_description if workbook_description else '',
 
-                                        'datasource_id': embedded_datasource_id,
+                                        'datasource_id': embedded_datasource_id if embedded_datasource_id else '',
                                         'datasource_luid': '',
-                                        'datasource_name': embedded_datasource_name,
-                                        'created_at': embedded_datasource_createdAt,
-                                        'updated_at': embedded_datasource_updatedAt,
+                                        'datasource_name': embedded_datasource_name if embedded_datasource_name else '',
+                                        'created_at': embedded_datasource_createdAt if embedded_datasource_createdAt else '',
+                                        'updated_at': embedded_datasource_updatedAt if embedded_datasource_updatedAt else '',
                                         'datasource_project_id': '',
                                         'datasource_project_name': '',
                                         'datasource_tags': '',
-                                        'has_extracts': embedded_datasource_hasExtracts,
+                                        'has_extracts': embedded_datasource_hasExtracts if embedded_datasource_hasExtracts is not None else False,
                                         'datasource_type': 'Custom SQL',
 
                                         # 🔴 Field info intentionally NULL
@@ -228,14 +232,14 @@ class TableauDataManager:
                                         'field_type': ref_field.field_type if ref_field else None,
                                         'field_formula': ref_field.formula if ref_field and ref_field.field_type == 'CalculatedField' else None,
 
-                                        'table_name': upstream_table.name,
-                                        'column_name': column_name,
+                                        'table_name': upstream_table.name if upstream_table else '',
+                                        'column_name': column_name if column_name else '',
 
-                                        'sheet_id': sheet_id,
-                                        'sheet_name': sheet_name,
+                                        'sheet_id': sheet_id if sheet_id else '',
+                                        'sheet_name': sheet_name if sheet_name else '',
                                         'used_in_workbook': used_in_workbook,
-                                        'dashboard_id': dashboard_id,
-                                        'dashboard_name': dashboard_name,
+                                        'dashboard_id': dashboard_id if dashboard_id else '',
+                                        'dashboard_name': dashboard_name if dashboard_name else '',
 
                                         'query': query_id,
                                         'Flag': 'Workbook'
@@ -265,40 +269,40 @@ class TableauDataManager:
                                         break
 
                                 flat_embd_data.append({
-                                    'project_id': project_id,
-                                    'project_name': project_name,
-                                    'workbook_id': workbook_id,
-                                    'workbook_luid': workbook_luid,
-                                    'workbook_name': workbook_name,
-                                    'workbook_createdAt': workbook_createdAt,
-                                    'workbook_updatedAt': workbook_updatedAt,
-                                    'workbook_tags': workbook_tags,
-                                    'workbook_description': workbook_description,
+                                    'project_id': project_id if project_id else '',
+                                    'project_name': project_name if project_name else '',
+                                    'workbook_id': workbook_id if workbook_id else '',
+                                    'workbook_luid': workbook_luid if workbook_luid else '',
+                                    'workbook_name': workbook_name if workbook_name else '',
+                                    'workbook_createdAt': workbook_createdAt if workbook_createdAt else '',
+                                    'workbook_updatedAt': workbook_updatedAt if workbook_updatedAt else '',
+                                    'workbook_tags': workbook_tags if workbook_tags else '',
+                                    'workbook_description': workbook_description if workbook_description else '',
 
-                                    'datasource_id': embedded_datasource_id,
+                                    'datasource_id': embedded_datasource_id if embedded_datasource_id else '',
                                     'datasource_luid': '',
-                                    'datasource_name': embedded_datasource_name,
-                                    'created_at': embedded_datasource_createdAt,
-                                    'updated_at': embedded_datasource_updatedAt,
+                                    'datasource_name': embedded_datasource_name if embedded_datasource_name else '',
+                                    'created_at': embedded_datasource_createdAt if embedded_datasource_createdAt else '',
+                                    'updated_at': embedded_datasource_updatedAt if embedded_datasource_updatedAt else '',
                                     'datasource_project_id': '',
                                     'datasource_project_name': '',
                                     'datasource_tags': '',
-                                    'has_extracts': embedded_datasource_hasExtracts,
+                                    'has_extracts': embedded_datasource_hasExtracts if embedded_datasource_hasExtracts is not None else False,
                                     'datasource_type': 'EmbeddedDatasource',
 
-                                    'field_id': field_id,
-                                    'field_name': field_name,
-                                    'field_type': field_type,
-                                    'field_formula': field_formula,
+                                    'field_id': field_id if field_id else '',
+                                    'field_name': field_name if field_name else '',
+                                    'field_type': field_type if field_type else '',
+                                    'field_formula': field_formula if field_formula else '',
 
-                                    'table_name': table_name,
-                                    'column_name': column_name,
+                                    'table_name': table_name if table_name else '',
+                                    'column_name': column_name if column_name else '',
 
-                                    'sheet_id': sheet_id,
-                                    'sheet_name': sheet_name,
+                                    'sheet_id': sheet_id if sheet_id else '',
+                                    'sheet_name': sheet_name if sheet_name else '',
                                     'used_in_workbook': used_in_workbook,
-                                    'dashboard_id': dashboard_id,
-                                    'dashboard_name': dashboard_name,
+                                    'dashboard_id': dashboard_id if dashboard_id else '',
+                                    'dashboard_name': dashboard_name if dashboard_name else '',
              
                                     'query': '',
                                     'Flag': 'Workbook'
