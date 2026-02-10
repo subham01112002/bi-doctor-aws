@@ -106,7 +106,7 @@ useEffect(() => {
 
 const waitForExcel = async (sessionKey) => {
   const maxAttempts = 60;          // 60 × 5s = 5 minutes
-  const intervalMs = 5000;
+  const intervalMs = 10000;
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     await new Promise((r) => setTimeout(r, intervalMs));
@@ -213,7 +213,7 @@ const handleDownloadMetadata = async () => {
     const downloadUrl = await waitForExcel(sessionKey);
 
     // Trigger download
-    window.location.href = downloadUrl;
+    // window.location.href = downloadUrl;
 
     alert("Metadata downloaded successfully!");
     setMetadataReady(true);
