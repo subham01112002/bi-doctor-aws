@@ -25,7 +25,7 @@ export default function TableauMetadataExtractor() {
   const projectRef = useRef(null);
   // const [logoutOpen, setLogoutOpen] = useState(false);
   const [metadataReady, setMetadataReady] = useState(false);
-  const SOURCE_IQ_DASHBOARD_URL = "https://us-west-2b.online.tableau.com/t/exavalu/views/WorkbookSummary_17683044081920/WorkbookSummary";
+  // const SOURCE_IQ_DASHBOARD_URL = "https://us-west-2b.online.tableau.com/t/exavalu/views/WorkbookSummary_17683044081920/WorkbookSummary";
 
   const clearFilter = () => {
     setBiTool("Tableau");

@@ -37,7 +37,7 @@ export default function SourceIQ() {
         )}
 
       <tableau-viz
-        src="https://us-west-2b.online.tableau.com/t/exavalu/views/WorkbookSummary_17683044081920/WorkbookSummary"
+        src="https://us-west-2b.online.tableau.com/t/exavalu/views/SOURCEIQ/SourceIQWorkbookSummaryHist/4b84ee2f-d57e-4d7a-a339-c37c58f7040e/8020ba55-3165-4fdd-a1ba-e88deb20d541%27"
         token={jwtToken}
         // width="100%"
         // height="95vh"
